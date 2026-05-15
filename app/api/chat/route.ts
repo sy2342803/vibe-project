@@ -184,6 +184,21 @@ export async function POST(req: NextRequest) {
   "prompt": "이 에러를 AI에게 해결 요청하는 프롬프트"
 }
       `;
+        } else if (type === "prompt") {
+      prompt = `
+당신은 비전공자 대학생의 바이브 코딩을 도와주는 친절한 AI 튜터입니다.
+아래의 막연한 프롬프트를 AI가 이해하기 쉬운 구체적인 바이브 코딩용 프롬프트로 개선해주세요.
+
+원본 프롬프트: "${idea}"
+
+아래 JSON 형식으로만 답변해주세요. 다른 말은 하지 마세요:
+{
+  "original": "원본 프롬프트 그대로",
+  "improved": "개선된 프롬프트 (구체적이고 명확하게)",
+  "reason": "왜 이렇게 바꿨는지 쉬운 말로 설명 (2-3문장)",
+  "tips": ["좋은 프롬프트 작성 팁 1", "좋은 프롬프트 작성 팁 2", "좋은 프롬프트 작성 팁 3"]
+}
+      `;
     } else {
       return NextResponse.json(
         { success: false, error: "잘못된 요청 타입입니다." },
@@ -198,7 +213,22 @@ export async function POST(req: NextRequest) {
       throw new Error("JSON 형식 응답을 파싱하지 못했습니다.");
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    // JSON 정리 (불필요한 문자 제거)
+    let cleanedJson = jsonMatch[0]
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
+      .trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(cleanedJson);
+    } catch {
+      // 마지막 중괄호까지만 잘라서 다시 시도
+      const lastBrace = cleanedJson.lastIndexOf("}");
+      cleanedJson = cleanedJson.substring(0, lastBrace + 1);
+      parsed = JSON.parse(cleanedJson);
+    }
 
     return NextResponse.json({
       success: true,

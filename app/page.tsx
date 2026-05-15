@@ -288,7 +288,7 @@ export default function Home() {
             </div>
 
             <a
-              href="#cta"
+              href="/workspace"
               className={`hidden rounded-lg px-4 py-1.5 text-xs font-bold tracking-wide transition md:block lg:px-5 lg:py-2.5 ${
                 isDark
                   ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-900/40 hover:opacity-90"
@@ -368,7 +368,7 @@ export default function Home() {
 
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <a
-            href="#features"
+            href="/workspace"
             className={`rounded-full px-8 py-3 text-sm font-bold uppercase tracking-wide transition sm:text-base ${
               isDark
                 ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-xl hover:scale-[1.02] hover:opacity-90"
@@ -871,7 +871,7 @@ export default function Home() {
 
           <div className="relative mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <a
-              href="#top"
+              href="/workspace"
               className={`rounded-xl px-8 py-4 text-base font-semibold text-white transition ${
                 isDark
                   ? "bg-gradient-to-r from-blue-600 to-violet-600 shadow-2xl shadow-violet-900/50 hover:scale-[1.02] hover:opacity-90"

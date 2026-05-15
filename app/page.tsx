@@ -353,7 +353,7 @@ export default function Home() {
             isDark ? "text-white/55" : "text-slate-500"
           }`}
         >
-          문과생도, 1일 만에, 진짜 프로토타입.
+          비전공자도, 1일 만에, 진짜 프로토타입.
         </p>
 
         <p

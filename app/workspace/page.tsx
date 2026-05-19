@@ -193,7 +193,7 @@ export default function Workspace() {
     setTimeout(() => setPromptCopied(false), 2000);
   };
 
-  // 🔥 CSS 최신 색상 단위(lab) 오류를 원천 차단하는 최적화 PDF 캡처 함수
+  // 🔥 [핵심 타격 수정] 복제 클론(onclone) 단에서 모든 'lab' 문자열을 강제로 삭제/치환하는 울트라 치트키 옵션 적용
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setPdfDownloading(true);
@@ -201,17 +201,25 @@ export default function Workspace() {
     try {
       const element = reportRef.current;
       
-      // html2canvas가 해석하지 못하는 특수 그라데이션 및 CSS 필터를 안전한 기본값으로 캡처
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
-        allowTaint: false, // Taint 해제하여 폰트 및 모던 스타일 안전하게 격리
-        ignoreElements: (node) => {
-          // 혹시 모를 캡처 오류 유발 애니메이션 요소가 있다면 제외
-          return node.classList.contains("animate-spin");
-        },
+        allowTaint: true,
         backgroundColor: isDark ? "#0c0c1d" : "#ffffff",
+        // 🛠️ 캡처 전용 가상 DOM(클론) 생성 시점에 'lab' 색상 함수를 하드 캐리해서 지워버립니다.
+        onclone: (clonedDoc) => {
+          const allElements = clonedDoc.getElementsByTagName("*");
+          for (let i = 0; i < allElements.length; i++) {
+            const el = allElements[i] as HTMLElement;
+            const style = window.getComputedStyle(el);
+            
+            // 테두리나 배경, 글자색에 lab 색상 코드가 들어가 있다면 강제로 투명이나 상속 처리
+            if (style.borderColor.includes("lab")) el.style.borderColor = "transparent";
+            if (style.backgroundColor.includes("lab")) el.style.backgroundColor = isDark ? "#12122c" : "#f8fafc";
+            if (style.color.includes("lab")) el.style.color = isDark ? "#ffffff" : "#0f172a";
+          }
+        }
       });
 
       const imgData = canvas.toDataURL("image/png");
@@ -236,7 +244,7 @@ export default function Workspace() {
 
       doc.save("vibe-project-plan.pdf");
     } catch (error) {
-      console.error("PDF 다운로드 에러 디버깅 로깅:", error);
+      console.error("PDF 다운로드 최종 치명적 에러 로깅:", error);
       alert(`PDF 생성 실패: ${error instanceof Error ? error.message : "알 수 없는 시스템 오류"}`);
     } finally {
       setPdfDownloading(false);
@@ -247,7 +255,6 @@ export default function Workspace() {
 
   return (
     <main className={`relative min-h-screen overflow-hidden antialiased transition-colors duration-500 ${isDark ? "bg-[#0c0c1d] text-white" : "bg-white text-slate-900"}`}>
-      {/* 💡 배경 그래디언트 블러(Blur) 요소가 'lab' 컬러 에러를 유발하므로, 캡처 타겟(reportRef) 외부에 완전히 격리 배치 */}
       {isDark && (
         <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
           <div className="absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-violet-600/25 blur-[120px]" />
@@ -409,7 +416,6 @@ export default function Workspace() {
             )}
 
             {!loading && planData && (
-              /* 🛠️ [해결 포인트] 캡처 영역 카드들의 텍스트 색상 및 외곽선 색상을 html2canvas 친화적인 HEX 코드로 확실히 바인딩 */
               <div ref={reportRef} className={`mt-10 rounded-2xl p-4 transition-colors duration-500 ${isDark ? "bg-[#0c0c1d]" : "bg-white"}`}>
                 <div className={`rounded-2xl border p-5 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
                   <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">

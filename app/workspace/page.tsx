@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 type Theme = "light" | "dark";
 
@@ -50,25 +52,13 @@ function MoonIcon() {
   );
 }
 
-// 브라우저 환경에서 한글 깨짐 없이 안전하게 인코딩하는 함수
-function encodeData(data: object): string {
-  const json = JSON.stringify(data);
-  const utf8String = encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_, p1) => {
-    return String.fromCharCode(parseInt(p1, 16));
-  });
-  return btoa(utf8String)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
-
 export default function Workspace() {
   const [theme, setTheme] = useState<Theme>("light");
   const [idea, setIdea] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [planData, setPlanData] = useState<PlanData | null>(null);
-  const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
 
   const [errorText, setErrorText] = useState("");
   const [errorLoading, setErrorLoading] = useState(false);
@@ -83,40 +73,15 @@ export default function Workspace() {
   const [copied, setCopied] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"error" | "prompt">("error");
 
-  // 데이터 복원 및 로컬스토리지 연결을 처리하는 완벽한 useEffect
+  // PDF로 캡처할 영역을 지정하기 위한 Reference 객체
+  const reportRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("vibe-theme");
     if (savedTheme === "light" || savedTheme === "dark") {
       setTheme(savedTheme as Theme);
     }
 
-    // 🔗 주소창에 공유된 데이터(?d=...)가 있는지 먼저 최우선으로 확인합니다.
-    const urlParams = new URLSearchParams(window.location.search);
-    const sharedData = urlParams.get("d");
-
-    if (sharedData) {
-      try {
-        const base64 = sharedData.replace(/-/g, "+").replace(/_/g, "/");
-        const decodedJson = decodeURIComponent(
-          atob(base64)
-            .split("")
-            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-            .join("")
-        );
-        const parsed = JSON.parse(decodedJson);
-        
-        if (parsed && parsed.idea) {
-          setIdea(parsed.idea);
-          setPlanData(parsed);
-          setSubmitted(true);
-          return; // 공유 링크로 정상 복원된 경우 하단의 로컬스토리지 로드를 생략합니다.
-        }
-      } catch (e) {
-        console.error("공유 데이터 복원 실패:", e);
-      }
-    }
-
-    // 주소창에 데이터가 없을 때만 브라우저에 저장된 기존 기획서 기억 불러오기
     const savedIdea = localStorage.getItem("vibe-idea");
     const savedPlan = localStorage.getItem("vibe-plan");
     if (savedIdea && savedPlan) {
@@ -206,10 +171,6 @@ export default function Workspace() {
     setCopied(null);
     setErrorCopied(false);
     setPromptCopied(false);
-    setShareLinkCopied(false);
-    
-    // 주소창의 쿼리 스트링(?d=...) 깔끔하게 지우고 초기화하기
-    window.history.pushState({}, "", window.location.pathname);
     
     localStorage.removeItem("vibe-idea");
     localStorage.removeItem("vibe-plan");
@@ -233,59 +194,51 @@ export default function Workspace() {
     setTimeout(() => setPromptCopied(false), 2000);
   };
 
-  // 주소창 상태에 영향을 받지 않도록 목적지 주소를 완전히 강제 고정하는 함수
-  const handleShareLink = async () => {
-    if (!planData) return;
+  // 🔥 화면을 캡처하여 고화질 PDF 보고서 파일로 다운로드해 주는 핵심 함수
+  const handleDownloadPDF = async () => {
+    if (!reportRef.current) return;
+    setPdfDownloading(true);
+
     try {
-      const dataToShare = { idea, ...planData };
-      const encoded = encodeData(dataToShare);
-
-      const origin = window.location.origin;
-      // 🚀 주소 뒤에 중복으로 붙거나 유령 주소로 가지 않도록 '/workspace' 경로로 완벽 고정!
-      const longUrl = `${origin}/workspace?d=${encoded}`;
-
-      const response = await fetch("/api/shorten", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: longUrl }),
+      const element = reportRef.current;
+      // 캡처 화질 향상을 위해 scale 옵션을 2로 지정
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: isDark ? "#0c0c1d" : "#ffffff",
       });
 
-      if (!response.ok) throw new Error("단축 API 호출 실패");
+      const imgData = canvas.toDataURL("image/png");
+      
+      // A4 용지 규격 기준 설정 (mm단위)
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
 
-      const json = await response.json();
-      const finalUrl = json.success ? json.shortUrl : longUrl;
+      const doc = new jsPDF("p", "mm", "a4");
+      let position = 0;
 
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(finalUrl).then(() => {
-          setShareLinkCopied(true);
-          setTimeout(() => setShareLinkCopied(false), 3000);
-        }).catch(() => {
-          fallbackCopyText(finalUrl);
-        });
-      } else {
-        fallbackCopyText(finalUrl);
+      // 첫 페이지 추가
+      doc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // 내용이 길어 A4 한 페이지를 넘어가면 멀티 페이지로 분할 생성
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        doc.addPage();
+        doc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
       }
-    } catch (err) {
-      console.error(err);
-      alert("링크를 생성 및 단축하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
-    }
-  };
 
-  const fallbackCopyText = (text: string) => {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.style.position = "fixed";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    try {
-      document.execCommand("copy");
-      setShareLinkCopied(true);
-      setTimeout(() => setShareLinkCopied(false), 3000);
-    } catch (err) {
-      alert("주소 복사에 실패했습니다. 주소창의 링크를 직접 복사해 공유해 주세요.");
+      // 기획서 파일명 지정 후 저장 다운로드
+      doc.save("vibe-project-plan.pdf");
+    } catch (error) {
+      console.error("PDF 다운로드 중 실패:", error);
+      alert("PDF를 생성하는 과정에서 문제가 발생했습니다.");
+    } finally {
+      setPdfDownloading(false);
     }
-    document.body.removeChild(textArea);
   };
 
   const currentStep = submitted ? 2 : 1;
@@ -411,21 +364,31 @@ export default function Workspace() {
                 {loading ? "잠깐만요, AI가 정리 중이에요!" : "이렇게 기획해봤어요!"}
               </h1>
               <p className={`mx-auto mt-4 max-w-xl text-base leading-7 ${isDark ? "text-white/40" : "text-slate-500"}`}>
-                {loading ? "아이디어를 분석하고 있어요. 잠시만 기다려주세요." : "아래 내용을 바탕으로 AI에게 요청하면 더 좋은 결과를 받을 수 있어요."}
+                {loading ? "아이디어를 분석하고 있어요. 잠시만 기다려주세요." : "정리된 기획서를 파일로 다운로드받아 팀원들과 간편하게 공유해 보세요."}
               </p>
 
               {!loading && planData && (
                 <div className="mt-6 flex justify-center">
                   <button
                     type="button"
-                    onClick={handleShareLink}
-                    className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-sm transition ${
-                      shareLinkCopied
-                        ? isDark ? "border border-green-500/30 bg-green-500/20 text-green-400" : "border border-green-200 bg-green-50 text-green-600"
-                        : isDark ? "border border-white/10 bg-white/10 text-white hover:bg-white/20" : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    onClick={handleDownloadPDF}
+                    disabled={pdfDownloading}
+                    className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-bold shadow-lg transition ${
+                      pdfDownloading
+                        ? "cursor-not-allowed bg-slate-400 text-white opacity-60"
+                        : isDark 
+                          ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-violet-900/40 hover:opacity-95" 
+                          : "bg-slate-950 text-white hover:bg-slate-800 shadow-slate-200"
                     }`}
                   >
-                    {shareLinkCopied ? "✓ 단축 링크 복사 완료!" : "🔗 이 기획서 링크 복사하기"}
+                    {pdfDownloading ? (
+                      <>
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                        PDF 보고서 생성 중...
+                      </>
+                    ) : (
+                      "📄 이 기획서 PDF 다운로드하기"
+                    )}
                   </button>
                 </div>
               )}
@@ -443,8 +406,9 @@ export default function Workspace() {
             )}
 
             {!loading && planData && (
-              <>
-                <div className={`mt-10 rounded-2xl border p-5 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
+              /* 🔥 PDF 출력을 위해 이 아래 카드 전체를 하나의 div(reportRef)로 묶어 캡처합니다 */
+              <div ref={reportRef} className={`mt-10 rounded-2xl p-2 transition-colors duration-500 ${isDark ? "bg-[#0c0c1d]" : "bg-white"}`}>
+                <div className={`rounded-2xl border p-5 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
                   <p className={`mb-2 text-xs font-semibold uppercase tracking-widest ${isDark ? "text-white/30" : "text-slate-400"}`}>
                     내가 입력한 아이디어
                   </p>
@@ -458,8 +422,7 @@ export default function Workspace() {
                     { num: "03", title: "핵심 기능", gradient: "from-pink-500 to-rose-400", lightColor: "bg-pink-50 text-pink-600", list: planData.features },
                     { num: "04", title: "필요한 화면", gradient: "from-orange-500 to-amber-400", lightColor: "bg-orange-50 text-orange-600", list: planData.screens },
                   ].map((card) => (
-                    <div key={card.num} className={`group relative overflow-hidden rounded-2xl border p-6 transition ${isDark ? "border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10" : "border-slate-200 bg-white shadow-sm"}`}>
-                      {isDark && <div className={`absolute -right-8 -top-8 h-32 w-32 rounded-full bg-gradient-to-br ${card.gradient} opacity-10 blur-2xl transition group-hover:opacity-20`} />}
+                    <div key={card.num} className={`group relative overflow-hidden rounded-2xl border p-6 transition ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white shadow-sm"}`}>
                       <div className="mb-3 flex items-center gap-2">
                         <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold ${isDark ? `bg-gradient-to-br ${card.gradient} text-white` : card.lightColor}`}>
                           {card.num}
@@ -604,14 +567,16 @@ export default function Workspace() {
                     )}
                   </div>
                 </div>
+              </div>
+            )}
 
-                <div className="mt-10 text-center">
-                  <button type="button" onClick={handleReset}
-                    className={`text-sm underline underline-offset-4 transition ${isDark ? "text-white/30 hover:text-white/60" : "text-slate-400 hover:text-slate-600"}`}>
-                    다른 아이디어로 다시 시작하기
-                  </button>
-                </div>
-              </>
+            {!loading && planData && (
+              <div className="mt-10 text-center">
+                <button type="button" onClick={handleReset}
+                  className={`text-sm underline underline-offset-4 transition ${isDark ? "text-white/30 hover:text-white/60" : "text-slate-400 hover:text-slate-600"}`}>
+                  다른 아이디어로 다시 시작하기
+                </button>
+              </div>
             )}
           </>
         )}

@@ -201,40 +201,44 @@ export default function Workspace() {
   };
 
   // 🚀 [수정 및 조립 완료] 외부 API를 사용하여 초미니 주소로 단축 복사하는 함수
-  const handleShareLink = async () => {
-    if (!planData) return;
-    try {
-      const dataToShare = { idea, ...planData };
-      const encoded = encodeData(dataToShare);
-      
-      const origin = window.location.origin;
-      const longUrl = `${origin}/result?d=${encoded}`;
+  // 🚀 자체 API Route를 통해 안전하게 단축
+const handleShareLink = async () => {
+  if (!planData) return;
+  try {
+    const dataToShare = { idea, ...planData };
+    const encoded = encodeData(dataToShare);
 
-      // 1. 무료 TinyURL API 호출해 주소 압축하기
-      const response = await fetch(
-        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`
-      );
+    const origin = window.location.origin;
+    const longUrl = `${origin}/result?d=${encoded}`;
 
-      if (!response.ok) throw new Error("단축 API 호출 실패");
-      
-      const shortUrl = await response.text(); // 압축된 주소가 반환됨
+    // 🔥 우리 서버 API로 안전하게 단축 (CORS, 봇 차단 우회)
+    const response = await fetch("/api/shorten", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: longUrl }),
+    });
 
-      // 2. 압축된 짧은 링크를 클립보드에 복사하기
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(shortUrl).then(() => {
-          setShareLinkCopied(true);
-          setTimeout(() => setShareLinkCopied(false), 3000);
-        }).catch(() => {
-          fallbackCopyText(shortUrl);
-        });
-      } else {
-        fallbackCopyText(shortUrl);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("링크를 생성 및 단축하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    if (!response.ok) throw new Error("단축 API 호출 실패");
+
+    const json = await response.json();
+    const finalUrl = json.success ? json.shortUrl : longUrl;
+
+    // 클립보드에 복사
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(finalUrl).then(() => {
+        setShareLinkCopied(true);
+        setTimeout(() => setShareLinkCopied(false), 3000);
+      }).catch(() => {
+        fallbackCopyText(finalUrl);
+      });
+    } else {
+      fallbackCopyText(finalUrl);
     }
-  };
+  } catch (err) {
+    console.error(err);
+    alert("링크를 생성 및 단축하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+  }
+};
 
   const fallbackCopyText = (text: string) => {
     const textArea = document.createElement("textarea");

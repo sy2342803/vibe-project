@@ -11,11 +11,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ✅ TinyURL 호출 (미리보기 페이지 우회)
     const response = await fetch(
       `https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`,
       {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Vibe Project)",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         },
       }
     );
@@ -24,8 +25,14 @@ export async function POST(req: NextRequest) {
       throw new Error("단축 API 호출 실패");
     }
 
-    const shortUrl = await response.text();
+    let shortUrl = await response.text();
 
+    // ✅ 미리보기 경로가 끼어들면 제거
+    shortUrl = shortUrl
+      .replace("/preview/deprecated/", "/")
+      .replace("/preview/", "/");
+
+    // 응답이 정상 URL인지 검증
     if (!shortUrl.startsWith("https://tinyurl.com/")) {
       return NextResponse.json({
         success: true,

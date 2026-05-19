@@ -209,7 +209,8 @@ const handleShareLink = async () => {
     const encoded = encodeData(dataToShare);
 
     const origin = window.location.origin;
-    const longUrl = `${origin}/result?d=${encoded}`;
+    const currentPath = window.location.pathname; // /workspace 가 들어옵니다.
+    const longUrl = `${origin}${currentPath}?d=${encoded}`;
 
     // 🔥 우리 서버 API로 안전하게 단축 (CORS, 봇 차단 우회)
     const response = await fetch("/api/shorten", {

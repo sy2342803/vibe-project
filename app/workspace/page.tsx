@@ -50,37 +50,44 @@ function MoonIcon() {
   );
 }
 
+// 브라우저 환경에서 한글 깨짐 없이 안전하게 인코딩하는 함수
+function encodeData(data: object): string {
+  const json = JSON.stringify(data);
+  const utf8String = encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_, p1) => {
+    return String.fromCharCode(parseInt(p1, 16));
+  });
+  return btoa(utf8String)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
 export default function Workspace() {
   const [theme, setTheme] = useState<Theme>("light");
   const [idea, setIdea] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [planData, setPlanData] = useState<PlanData | null>(null);
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
 
-  // 에러 해석기
   const [errorText, setErrorText] = useState("");
   const [errorLoading, setErrorLoading] = useState(false);
   const [errorData, setErrorData] = useState<ErrorData | null>(null);
   const [errorCopied, setErrorCopied] = useState(false);
 
-  // 프롬프트 코치
   const [promptInput, setPromptInput] = useState("");
   const [promptLoading, setPromptLoading] = useState(false);
   const [promptData, setPromptData] = useState<PromptData | null>(null);
   const [promptCopied, setPromptCopied] = useState(false);
 
   const [copied, setCopied] = useState<number | null>(null);
-
-  // 탭 상태
   const [activeTab, setActiveTab] = useState<"error" | "prompt">("error");
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("vibe-theme");
     if (savedTheme === "light" || savedTheme === "dark") {
-      setTheme(savedTheme);
+      setTheme(savedTheme as Theme);
     }
-
-    // localStorage에서 이전 결과 불러오기
     const savedIdea = localStorage.getItem("vibe-idea");
     const savedPlan = localStorage.getItem("vibe-plan");
     if (savedIdea && savedPlan) {
@@ -102,7 +109,6 @@ export default function Workspace() {
     setLoading(true);
     setSubmitted(true);
     setPlanData(null);
-
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -112,7 +118,6 @@ export default function Workspace() {
       const json = await res.json();
       if (json.success) {
         setPlanData(json.data);
-        // localStorage에 저장
         localStorage.setItem("vibe-idea", idea);
         localStorage.setItem("vibe-plan", JSON.stringify(json.data));
       }
@@ -127,7 +132,6 @@ export default function Workspace() {
     if (!errorText.trim()) return;
     setErrorLoading(true);
     setErrorData(null);
-
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -147,7 +151,6 @@ export default function Workspace() {
     if (!promptInput.trim()) return;
     setPromptLoading(true);
     setPromptData(null);
-
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -174,6 +177,7 @@ export default function Workspace() {
     setCopied(null);
     setErrorCopied(false);
     setPromptCopied(false);
+    setShareLinkCopied(false);
     localStorage.removeItem("vibe-idea");
     localStorage.removeItem("vibe-plan");
   };
@@ -196,6 +200,59 @@ export default function Workspace() {
     setTimeout(() => setPromptCopied(false), 2000);
   };
 
+  // 🚀 [수정 및 조립 완료] 외부 API를 사용하여 초미니 주소로 단축 복사하는 함수
+  const handleShareLink = async () => {
+    if (!planData) return;
+    try {
+      const dataToShare = { idea, ...planData };
+      const encoded = encodeData(dataToShare);
+      
+      const origin = window.location.origin;
+      const longUrl = `${origin}/result?d=${encoded}`;
+
+      // 1. 무료 TinyURL API 호출해 주소 압축하기
+      const response = await fetch(
+        `https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`
+      );
+
+      if (!response.ok) throw new Error("단축 API 호출 실패");
+      
+      const shortUrl = await response.text(); // 압축된 주소가 반환됨
+
+      // 2. 압축된 짧은 링크를 클립보드에 복사하기
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shortUrl).then(() => {
+          setShareLinkCopied(true);
+          setTimeout(() => setShareLinkCopied(false), 3000);
+        }).catch(() => {
+          fallbackCopyText(shortUrl);
+        });
+      } else {
+        fallbackCopyText(shortUrl);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("링크를 생성 및 단축하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
+    }
+  };
+
+  const fallbackCopyText = (text: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+      document.execCommand("copy");
+      setShareLinkCopied(true);
+      setTimeout(() => setShareLinkCopied(false), 3000);
+    } catch (err) {
+      alert("주소 복사에 실패했습니다. 주소창의 링크를 직접 복사해 공유해 주세요.");
+    }
+    document.body.removeChild(textArea);
+  };
+
   const currentStep = submitted ? 2 : 1;
 
   return (
@@ -209,16 +266,11 @@ export default function Workspace() {
         </div>
       )}
 
-      {/* 헤더 */}
       <nav className={`sticky top-0 z-50 border-b backdrop-blur-xl transition-colors duration-500 ${isDark ? "border-white/5 bg-[#0c0c1d]/80" : "border-slate-100 bg-white/90"}`}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6 md:py-4">
-          <Link
-            href="/"
-            className={`text-base font-extrabold tracking-tight md:text-lg ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent"}`}
-          >
+          <Link href="/" className={`text-base font-extrabold tracking-tight md:text-lg ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent"}`}>
             VIBE PROJECT
           </Link>
-
           <div className="flex items-center gap-3 md:gap-4">
             <div className={`flex overflow-hidden rounded-full border p-1 transition-all duration-300 ${isDark ? "border-white/10 bg-white/10" : "border-slate-200 bg-white shadow-sm"}`}>
               <button type="button" onClick={() => handleThemeChange("light")} aria-label="Light mode"
@@ -230,16 +282,13 @@ export default function Workspace() {
                 <MoonIcon />
               </button>
             </div>
-
-            <Link href="/"
-              className={`rounded-lg px-4 py-1.5 text-xs font-bold tracking-wide transition ${isDark ? "border border-white/10 text-white/60 hover:bg-white/10 hover:text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
+            <Link href="/" className={`rounded-lg px-4 py-1.5 text-xs font-bold tracking-wide transition ${isDark ? "border border-white/10 text-white/60 hover:bg-white/10 hover:text-white" : "border border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
               처음으로
             </Link>
           </div>
         </div>
       </nav>
 
-      {/* 단계 표시 */}
       <div className={`border-b transition-colors duration-500 ${isDark ? "border-white/5 bg-white/[0.02]" : "border-slate-100 bg-slate-50"}`}>
         <div className="mx-auto flex max-w-6xl items-center gap-0 overflow-x-auto px-6 py-4">
           {[
@@ -265,11 +314,9 @@ export default function Workspace() {
         </div>
       </div>
 
-      {/* 메인 */}
       <div className="relative z-10 mx-auto max-w-4xl px-6 py-16">
         {!submitted ? (
           <>
-            {/* Step 1 — 아이디어 입력 */}
             <div className="text-center">
               <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold ${isDark ? "border-white/10 bg-white/5 text-white/60" : "border-blue-100 bg-blue-50 text-blue-600"}`}>
                 <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${isDark ? "bg-blue-400" : "bg-blue-500"}`} />
@@ -320,7 +367,6 @@ export default function Workspace() {
           </>
         ) : (
           <>
-            {/* Step 2 이후 */}
             <div className="text-center">
               <div className={`mb-4 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold ${loading ? isDark ? "border-white/10 bg-white/5 text-white/60" : "border-blue-100 bg-blue-50 text-blue-600" : isDark ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-green-100 bg-green-50 text-green-600"}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${loading ? "animate-pulse bg-blue-400" : "bg-green-500"}`} />
@@ -332,9 +378,24 @@ export default function Workspace() {
               <p className={`mx-auto mt-4 max-w-xl text-base leading-7 ${isDark ? "text-white/40" : "text-slate-500"}`}>
                 {loading ? "아이디어를 분석하고 있어요. 잠시만 기다려주세요." : "아래 내용을 바탕으로 AI에게 요청하면 더 좋은 결과를 받을 수 있어요."}
               </p>
+
+              {!loading && planData && (
+                <div className="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={handleShareLink}
+                    className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-sm transition ${
+                      shareLinkCopied
+                        ? isDark ? "border border-green-500/30 bg-green-500/20 text-green-400" : "border border-green-200 bg-green-50 text-green-600"
+                        : isDark ? "border border-white/10 bg-white/10 text-white hover:bg-white/20" : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {shareLinkCopied ? "✓ 단축 링크 복사 완료!" : "🔗 이 기획서 링크 복사하기"}
+                  </button>
+                </div>
+              )}
             </div>
 
-            {/* 로딩 */}
             {loading && (
               <div className="mt-16 flex flex-col items-center justify-center gap-6">
                 <div className={`h-16 w-16 animate-spin rounded-full border-4 border-t-transparent ${isDark ? "border-violet-500" : "border-blue-600"}`} />
@@ -348,7 +409,6 @@ export default function Workspace() {
 
             {!loading && planData && (
               <>
-                {/* 입력한 아이디어 */}
                 <div className={`mt-10 rounded-2xl border p-5 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
                   <p className={`mb-2 text-xs font-semibold uppercase tracking-widest ${isDark ? "text-white/30" : "text-slate-400"}`}>
                     내가 입력한 아이디어
@@ -356,7 +416,6 @@ export default function Workspace() {
                   <p className={`text-sm leading-7 ${isDark ? "text-white/70" : "text-slate-700"}`}>{idea}</p>
                 </div>
 
-                {/* 기획 카드 */}
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
                   {[
                     { num: "01", title: "문제 정의", gradient: "from-blue-500 to-cyan-400", lightColor: "bg-blue-50 text-blue-600", content: planData.problem },
@@ -389,7 +448,6 @@ export default function Workspace() {
                   ))}
                 </div>
 
-                {/* 추천 프롬프트 */}
                 <div className={`mt-8 rounded-2xl border p-6 ${isDark ? "border-blue-500/20 bg-blue-500/5" : "border-blue-100 bg-blue-50"}`}>
                   <p className={`mb-1 text-sm font-bold ${isDark ? "text-blue-400" : "text-blue-700"}`}>
                     Step 3 — AI에게 이렇게 요청해보세요
@@ -400,7 +458,7 @@ export default function Workspace() {
                   <div className="space-y-3">
                     {planData.prompts.map((prompt, i) => (
                       <div key={i} className={`flex items-start justify-between gap-4 rounded-xl p-4 ${isDark ? "bg-white/5" : "bg-white shadow-sm"}`}>
-                        <p className={`text-sm leading-6 ${isDark ? "text-white/70" : "text-slate-700"}`}>{prompt}</p>
+                        <p className={`text-sm leading-6 ${isDark ? "text-white/77" : "text-slate-700"}`}>{prompt}</p>
                         <button type="button" onClick={() => handleCopy(prompt, i)}
                           className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${copied === i ? isDark ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-green-200 bg-green-50 text-green-600" : isDark ? "border-white/10 text-white/50 hover:bg-white/10" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
                           {copied === i ? "복사됨!" : "복사"}
@@ -410,22 +468,14 @@ export default function Workspace() {
                   </div>
                 </div>
 
-                {/* Step 4 — AI 도구 활용 탭 */}
                 <div className={`mt-8 rounded-2xl border ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white shadow-sm"}`}>
-                  {/* 탭 헤더 */}
                   <div className={`flex border-b ${isDark ? "border-white/10" : "border-slate-100"}`}>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("error")}
-                      className={`flex-1 px-6 py-4 text-sm font-bold transition rounded-tl-2xl ${activeTab === "error" ? isDark ? "bg-white/5 text-white" : "bg-slate-50 text-slate-900" : isDark ? "text-white/40 hover:text-white" : "text-slate-400 hover:text-slate-600"}`}
-                    >
+                    <button type="button" onClick={() => setActiveTab("error")}
+                      className={`flex-1 rounded-tl-2xl px-6 py-4 text-sm font-bold transition ${activeTab === "error" ? isDark ? "bg-white/5 text-white" : "bg-slate-50 text-slate-900" : isDark ? "text-white/40 hover:text-white" : "text-slate-400 hover:text-slate-600"}`}>
                       🛟 에러 해석기
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("prompt")}
-                      className={`flex-1 px-6 py-4 text-sm font-bold transition rounded-tr-2xl ${activeTab === "prompt" ? isDark ? "bg-white/5 text-white" : "bg-slate-50 text-slate-900" : isDark ? "text-white/40 hover:text-white" : "text-slate-400 hover:text-slate-600"}`}
-                    >
+                    <button type="button" onClick={() => setActiveTab("prompt")}
+                      className={`flex-1 rounded-tr-2xl px-6 py-4 text-sm font-bold transition ${activeTab === "prompt" ? isDark ? "bg-white/5 text-white" : "bg-slate-50 text-slate-900" : isDark ? "text-white/40 hover:text-white" : "text-slate-400 hover:text-slate-600"}`}>
                       ✨ 프롬프트 코치
                     </button>
                   </div>
@@ -433,22 +483,14 @@ export default function Workspace() {
                   <div className="p-6">
                     {activeTab === "error" ? (
                       <>
-                        {/* 에러 해석기 */}
-                        <p className={`mb-1 text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
-                          에러가 생겼나요?
-                        </p>
+                        <p className={`mb-1 text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>에러가 생겼나요?</p>
                         <p className={`mb-4 text-sm ${isDark ? "text-white/40" : "text-slate-500"}`}>
                           에러 메시지를 아래에 붙여넣으면 AI가 쉬운 말로 해석해드려요.
                         </p>
-                        <textarea
-                          value={errorText}
-                          onChange={(e) => setErrorText(e.target.value)}
-                          placeholder="예) Cannot read properties of undefined (reading 'map')"
-                          rows={3}
-                          className={`w-full resize-none rounded-xl border px-4 py-3 text-sm outline-none transition ${isDark ? "border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-violet-500" : "border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-300 focus:border-blue-400"}`}
-                        />
-                        <button type="button" onClick={handleErrorSubmit}
-                          disabled={errorLoading || !errorText.trim()}
+                        <textarea value={errorText} onChange={(e) => setErrorText(e.target.value)}
+                          placeholder="예) Cannot read properties of undefined (reading 'map')" rows={3}
+                          className={`w-full resize-none rounded-xl border px-4 py-3 text-sm outline-none transition ${isDark ? "border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-violet-500" : "border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-300 focus:border-blue-400"}`} />
+                        <button type="button" onClick={handleErrorSubmit} disabled={errorLoading || !errorText.trim()}
                           className={`mt-3 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${errorText.trim() ? isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:opacity-90" : "bg-slate-900 text-white hover:bg-slate-700" : isDark ? "cursor-not-allowed bg-white/5 text-white/20" : "cursor-not-allowed bg-slate-100 text-slate-400"}`}>
                           {errorLoading ? "해석 중..." : "에러 해석하기 →"}
                         </button>
@@ -478,69 +520,40 @@ export default function Workspace() {
                       </>
                     ) : (
                       <>
-                        {/* 프롬프트 코치 */}
-                        <p className={`mb-1 text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>
-                          프롬프트를 더 좋게 만들어드려요
-                        </p>
+                        <p className={`mb-1 text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>프롬프트를 더 좋게 만들어드려요</p>
                         <p className={`mb-4 text-sm ${isDark ? "text-white/40" : "text-slate-500"}`}>
                           AI에게 보낼 프롬프트를 입력하면 더 구체적이고 효과적으로 개선해드려요.
                         </p>
-                        <textarea
-                          value={promptInput}
-                          onChange={(e) => setPromptInput(e.target.value)}
-                          placeholder="예) 맛집 앱 만들어줘"
-                          rows={3}
-                          className={`w-full resize-none rounded-xl border px-4 py-3 text-sm outline-none transition ${isDark ? "border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-violet-500" : "border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-300 focus:border-blue-400"}`}
-                        />
-                        <button type="button" onClick={handlePromptSubmit}
-                          disabled={promptLoading || !promptInput.trim()}
+                        <textarea value={promptInput} onChange={(e) => setPromptInput(e.target.value)}
+                          placeholder="예) 맛집 앱 만들어줘" rows={3}
+                          className={`w-full resize-none rounded-xl border px-4 py-3 text-sm outline-none transition ${isDark ? "border-white/10 bg-white/5 text-white placeholder:text-white/20 focus:border-violet-500" : "border-slate-200 bg-slate-50 text-slate-700 placeholder:text-slate-300 focus:border-blue-400"}`} />
+                        <button type="button" onClick={handlePromptSubmit} disabled={promptLoading || !promptInput.trim()}
                           className={`mt-3 rounded-xl px-5 py-2.5 text-sm font-semibold transition ${promptInput.trim() ? isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:opacity-90" : "bg-slate-900 text-white hover:bg-slate-700" : isDark ? "cursor-not-allowed bg-white/5 text-white/20" : "cursor-not-allowed bg-slate-100 text-slate-400"}`}>
                           {promptLoading ? "개선 중..." : "프롬프트 개선하기 →"}
                         </button>
 
                         {promptData && (
                           <div className={`mt-4 space-y-4 rounded-xl border p-4 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
-                            {/* 원본 vs 개선 */}
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div className={`rounded-xl border p-4 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white"}`}>
-                                <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-red-400" : "text-red-500"}`}>
-                                  원본 프롬프트
-                                </p>
-                                <p className={`text-sm leading-6 ${isDark ? "text-white/50" : "text-slate-500"}`}>
-                                  {promptData.original}
-                                </p>
+                                <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-red-400" : "text-red-500"}`}>원본 프롬프트</p>
+                                <p className={`text-sm leading-6 ${isDark ? "text-white/50" : "text-slate-500"}`}>{promptData.original}</p>
                               </div>
                               <div className={`rounded-xl border p-4 ${isDark ? "border-violet-500/30 bg-violet-500/5" : "border-blue-200 bg-blue-50"}`}>
-                                <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-violet-400" : "text-blue-600"}`}>
-                                  개선된 프롬프트
-                                </p>
-                                <p className={`text-sm leading-6 ${isDark ? "text-white/80" : "text-slate-700"}`}>
-                                  {promptData.improved}
-                                </p>
+                                <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-violet-400" : "text-blue-600"}`}>개선된 프롬프트</p>
+                                <p className={`text-sm leading-6 ${isDark ? "text-white/80" : "text-slate-700"}`}>{promptData.improved}</p>
                               </div>
                             </div>
-
-                            {/* 복사 버튼 */}
                             <button type="button" onClick={() => handlePromptCopy(promptData.improved)}
                               className={`w-full rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${promptCopied ? isDark ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-green-200 bg-green-50 text-green-600" : isDark ? "border-white/10 text-white/50 hover:bg-white/10" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
                               {promptCopied ? "✓ 복사됨!" : "개선된 프롬프트 복사하기"}
                             </button>
-
-                            {/* 개선 이유 */}
                             <div>
-                              <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-white/40" : "text-slate-400"}`}>
-                                이렇게 바꾼 이유
-                              </p>
-                              <p className={`text-sm leading-7 ${isDark ? "text-white/60" : "text-slate-600"}`}>
-                                {promptData.reason}
-                              </p>
+                              <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-white/40" : "text-slate-400"}`}>이렇게 바꾼 이유</p>
+                              <p className={`text-sm leading-7 ${isDark ? "text-white/60" : "text-slate-600"}`}>{promptData.reason}</p>
                             </div>
-
-                            {/* 팁 */}
                             <div>
-                              <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-white/40" : "text-slate-400"}`}>
-                                좋은 프롬프트 작성 팁
-                              </p>
+                              <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-white/40" : "text-slate-400"}`}>좋은 프롬프트 작성 팁</p>
                               <ul className="space-y-2">
                                 {promptData.tips.map((tip, i) => (
                                   <li key={i} className={`flex items-start gap-2 text-sm ${isDark ? "text-white/60" : "text-slate-600"}`}>
@@ -557,7 +570,6 @@ export default function Workspace() {
                   </div>
                 </div>
 
-                {/* 다시 시작 */}
                 <div className="mt-10 text-center">
                   <button type="button" onClick={handleReset}
                     className={`text-sm underline underline-offset-4 transition ${isDark ? "text-white/30 hover:text-white/60" : "text-slate-400 hover:text-slate-600"}`}>
@@ -570,7 +582,6 @@ export default function Workspace() {
         )}
       </div>
 
-      {/* 푸터 */}
       <footer className={`relative z-10 border-t px-6 py-10 ${isDark ? "border-white/5" : "border-slate-100"}`}>
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 md:flex-row">
           <span className="bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-sm font-bold text-transparent">

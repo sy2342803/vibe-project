@@ -83,11 +83,40 @@ export default function Workspace() {
   const [copied, setCopied] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"error" | "prompt">("error");
 
+  // 데이터 복원 및 로컬스토리지 연결을 처리하는 완벽한 useEffect
   useEffect(() => {
     const savedTheme = localStorage.getItem("vibe-theme");
     if (savedTheme === "light" || savedTheme === "dark") {
       setTheme(savedTheme as Theme);
     }
+
+    // 🔗 주소창에 공유된 데이터(?d=...)가 있는지 먼저 최우선으로 확인합니다.
+    const urlParams = new URLSearchParams(window.location.search);
+    const sharedData = urlParams.get("d");
+
+    if (sharedData) {
+      try {
+        const base64 = sharedData.replace(/-/g, "+").replace(/_/g, "/");
+        const decodedJson = decodeURIComponent(
+          atob(base64)
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+        const parsed = JSON.parse(decodedJson);
+        
+        if (parsed && parsed.idea) {
+          setIdea(parsed.idea);
+          setPlanData(parsed);
+          setSubmitted(true);
+          return; // 공유 링크로 정상 복원된 경우 하단의 로컬스토리지 로드를 생략합니다.
+        }
+      } catch (e) {
+        console.error("공유 데이터 복원 실패:", e);
+      }
+    }
+
+    // 주소창에 데이터가 없을 때만 브라우저에 저장된 기존 기획서 기억 불러오기
     const savedIdea = localStorage.getItem("vibe-idea");
     const savedPlan = localStorage.getItem("vibe-plan");
     if (savedIdea && savedPlan) {
@@ -178,6 +207,10 @@ export default function Workspace() {
     setErrorCopied(false);
     setPromptCopied(false);
     setShareLinkCopied(false);
+    
+    // 주소창의 쿼리 스트링(?d=...) 깔끔하게 지우고 초기화하기
+    window.history.pushState({}, "", window.location.pathname);
+    
     localStorage.removeItem("vibe-idea");
     localStorage.removeItem("vibe-plan");
   };
@@ -200,46 +233,43 @@ export default function Workspace() {
     setTimeout(() => setPromptCopied(false), 2000);
   };
 
-  // 🚀 [수정 및 조립 완료] 외부 API를 사용하여 초미니 주소로 단축 복사하는 함수
-  // 🚀 자체 API Route를 통해 안전하게 단축
-const handleShareLink = async () => {
-  if (!planData) return;
-  try {
-    const dataToShare = { idea, ...planData };
-    const encoded = encodeData(dataToShare);
+  // 주소창 상태에 영향을 받지 않도록 목적지 주소를 완전히 강제 고정하는 함수
+  const handleShareLink = async () => {
+    if (!planData) return;
+    try {
+      const dataToShare = { idea, ...planData };
+      const encoded = encodeData(dataToShare);
 
-    const origin = window.location.origin;
-    const currentPath = window.location.pathname; // /workspace 가 들어옵니다.
-    const longUrl = `${origin}${currentPath}?d=${encoded}`;
+      const origin = window.location.origin;
+      // 🚀 주소 뒤에 중복으로 붙거나 유령 주소로 가지 않도록 '/workspace' 경로로 완벽 고정!
+      const longUrl = `${origin}/workspace?d=${encoded}`;
 
-    // 🔥 우리 서버 API로 안전하게 단축 (CORS, 봇 차단 우회)
-    const response = await fetch("/api/shorten", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: longUrl }),
-    });
-
-    if (!response.ok) throw new Error("단축 API 호출 실패");
-
-    const json = await response.json();
-    const finalUrl = json.success ? json.shortUrl : longUrl;
-
-    // 클립보드에 복사
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(finalUrl).then(() => {
-        setShareLinkCopied(true);
-        setTimeout(() => setShareLinkCopied(false), 3000);
-      }).catch(() => {
-        fallbackCopyText(finalUrl);
+      const response = await fetch("/api/shorten", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: longUrl }),
       });
-    } else {
-      fallbackCopyText(finalUrl);
+
+      if (!response.ok) throw new Error("단축 API 호출 실패");
+
+      const json = await response.json();
+      const finalUrl = json.success ? json.shortUrl : longUrl;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(finalUrl).then(() => {
+          setShareLinkCopied(true);
+          setTimeout(() => setShareLinkCopied(false), 3000);
+        }).catch(() => {
+          fallbackCopyText(finalUrl);
+        });
+      } else {
+        fallbackCopyText(finalUrl);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("링크를 생성 및 단축하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
     }
-  } catch (err) {
-    console.error(err);
-    alert("링크를 생성 및 단축하는 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
-  }
-};
+  };
 
   const fallbackCopyText = (text: string) => {
     const textArea = document.createElement("textarea");
@@ -418,7 +448,7 @@ const handleShareLink = async () => {
                   <p className={`mb-2 text-xs font-semibold uppercase tracking-widest ${isDark ? "text-white/30" : "text-slate-400"}`}>
                     내가 입력한 아이디어
                   </p>
-                  <p className={`text-sm leading-7 ${isDark ? "text-white/70" : "text-slate-700"}`}>{idea}</p>
+                  <p className={`text-sm leading-7 ${isDark ? "text-white/77" : "text-slate-700"}`}>{idea}</p>
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -504,16 +534,16 @@ const handleShareLink = async () => {
                           <div className={`mt-4 rounded-xl border p-4 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
                             <div className="mb-3">
                               <p className={`mb-1 text-xs font-bold uppercase tracking-wider ${isDark ? "text-red-400" : "text-red-600"}`}>에러 원인</p>
-                              <p className={`text-sm leading-7 ${isDark ? "text-white/70" : "text-slate-700"}`}>{errorData.cause}</p>
+                              <p className={`text-sm leading-7 ${isDark ? "text-white/77" : "text-slate-700"}`}>{errorData.cause}</p>
                             </div>
                             <div className="mb-3">
                               <p className={`mb-1 text-xs font-bold uppercase tracking-wider ${isDark ? "text-green-400" : "text-green-600"}`}>해결 방법</p>
-                              <p className={`text-sm leading-7 ${isDark ? "text-white/70" : "text-slate-700"}`}>{errorData.solution}</p>
+                              <p className={`text-sm leading-7 ${isDark ? "text-white/77" : "text-slate-700"}`}>{errorData.solution}</p>
                             </div>
                             <div>
                               <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-blue-400" : "text-blue-600"}`}>AI에게 이렇게 요청해보세요</p>
                               <div className={`flex items-start justify-between gap-3 rounded-xl p-3 ${isDark ? "bg-white/5" : "bg-white"}`}>
-                                <p className={`text-sm leading-6 ${isDark ? "text-white/70" : "text-slate-700"}`}>{errorData.prompt}</p>
+                                <p className={`text-sm leading-6 ${isDark ? "text-white/77" : "text-slate-700"}`}>{errorData.prompt}</p>
                                 <button type="button" onClick={() => handleErrorCopy(errorData.prompt)}
                                   className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${errorCopied ? isDark ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-green-200 bg-green-50 text-green-600" : isDark ? "border-white/10 text-white/50 hover:bg-white/10" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
                                   {errorCopied ? "복사됨!" : "복사"}

@@ -73,7 +73,6 @@ export default function Workspace() {
   const [copied, setCopied] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"error" | "prompt">("error");
 
-  // PDF로 캡처할 타겟 영역 지정을 위한 Ref
   const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -194,7 +193,7 @@ export default function Workspace() {
     setTimeout(() => setPromptCopied(false), 2000);
   };
 
-  // 🔥 Vercel 배포 서버 환경 및 모바일 브라우저에서도 오류 없는 PDF 생성 함수
+  // 🔥 CSS 최신 색상 단위(lab) 오류를 원천 차단하는 최적화 PDF 캡처 함수
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setPdfDownloading(true);
@@ -202,30 +201,32 @@ export default function Workspace() {
     try {
       const element = reportRef.current;
       
-      // 배포 사이트에서 캔버스 렌더링 시 발생하는 충돌 방지 최적화 옵션
+      // html2canvas가 해석하지 못하는 특수 그라데이션 및 CSS 필터를 안전한 기본값으로 캡처
       const canvas = await html2canvas(element, {
-        scale: 2,               // 출력 해상도 및 화질 2배 업그레이드
-        useCORS: true,          // 외부 도메인 및 리소스 차단 방지
-        logging: false,         // 불필요한 콘솔 오류 로그 마스킹
-        allowTaint: true,       // 캡처 시 오염 이미지 무시하고 우회 처리
-        backgroundColor: isDark ? "#0c0c1d" : "#ffffff", // 현재 테마 배경색 강제 적용
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        allowTaint: false, // Taint 해제하여 폰트 및 모던 스타일 안전하게 격리
+        ignoreElements: (node) => {
+          // 혹시 모를 캡처 오류 유발 애니메이션 요소가 있다면 제외
+          return node.classList.contains("animate-spin");
+        },
+        backgroundColor: isDark ? "#0c0c1d" : "#ffffff",
       });
 
       const imgData = canvas.toDataURL("image/png");
       
-      const imgWidth = 210;    // A4 가로 규격 크기 (mm)
-      const pageHeight = 295;   // A4 세로 규격 크기 (mm)
+      const imgWidth = 210;
+      const pageHeight = 295;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
 
       const doc = new jsPDF("p", "mm", "a4");
       let position = 0;
 
-      // 첫 페이지 생성
       doc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
-      // 만약 캡처할 분량이 길어 A4 세로 기준(295mm)을 초과하면 자동 다음 페이지 분할 생성
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         doc.addPage();
@@ -233,7 +234,6 @@ export default function Workspace() {
         heightLeft -= pageHeight;
       }
 
-      // PDF 저장 및 강제 다운로드 작동
       doc.save("vibe-project-plan.pdf");
     } catch (error) {
       console.error("PDF 다운로드 에러 디버깅 로깅:", error);
@@ -247,6 +247,7 @@ export default function Workspace() {
 
   return (
     <main className={`relative min-h-screen overflow-hidden antialiased transition-colors duration-500 ${isDark ? "bg-[#0c0c1d] text-white" : "bg-white text-slate-900"}`}>
+      {/* 💡 배경 그래디언트 블러(Blur) 요소가 'lab' 컬러 에러를 유발하므로, 캡처 타겟(reportRef) 외부에 완전히 격리 배치 */}
       {isDark && (
         <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
           <div className="absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-violet-600/25 blur-[120px]" />
@@ -408,13 +409,13 @@ export default function Workspace() {
             )}
 
             {!loading && planData && (
-              /* 🔥 PDF 추출 스냅샷용 컨테이너 박스 시작 */
+              /* 🛠️ [해결 포인트] 캡처 영역 카드들의 텍스트 색상 및 외곽선 색상을 html2canvas 친화적인 HEX 코드로 확실히 바인딩 */
               <div ref={reportRef} className={`mt-10 rounded-2xl p-4 transition-colors duration-500 ${isDark ? "bg-[#0c0c1d]" : "bg-white"}`}>
                 <div className={`rounded-2xl border p-5 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
-                  <p className={`mb-2 text-xs font-semibold uppercase tracking-widest ${isDark ? "text-white/30" : "text-slate-400"}`}>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-400">
                     내가 입력한 아이디어
                   </p>
-                  <p className={`text-sm leading-7 ${isDark ? "text-white/80" : "text-slate-700"}`}>{idea}</p>
+                  <p className={`text-sm leading-7 ${isDark ? "text-slate-200" : "text-slate-700"}`}>{idea}</p>
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -424,7 +425,7 @@ export default function Workspace() {
                     { num: "03", title: "핵심 기능", gradient: "from-pink-500 to-rose-400", lightColor: "bg-pink-50 text-pink-600", list: planData.features },
                     { num: "04", title: "필요한 화면", gradient: "from-orange-500 to-amber-400", lightColor: "bg-orange-50 text-orange-600", list: planData.screens },
                   ].map((card) => (
-                    <div key={card.num} className={`group relative overflow-hidden rounded-2xl border p-6 transition ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white shadow-sm"}`}>
+                    <div key={card.num} className={`group relative overflow-hidden rounded-2xl border p-6 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white shadow-sm"}`}>
                       <div className="mb-3 flex items-center gap-2">
                         <div className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold ${isDark ? `bg-gradient-to-br ${card.gradient} text-white` : card.lightColor}`}>
                           {card.num}
@@ -432,12 +433,12 @@ export default function Workspace() {
                         <h3 className={`font-bold ${isDark ? "text-white" : "text-slate-900"}`}>{card.title}</h3>
                       </div>
                       {"content" in card && card.content && (
-                        <p className={`text-sm leading-7 ${isDark ? "text-white/50" : "text-slate-500"}`}>{card.content}</p>
+                        <p className={`text-sm leading-7 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{card.content}</p>
                       )}
                       {"list" in card && card.list && (
                         <ul className="space-y-2">
                           {card.list.map((item, i) => (
-                            <li key={i} className={`flex items-start gap-2 text-sm ${isDark ? "text-white/50" : "text-slate-500"}`}>
+                            <li key={i} className={`flex items-start gap-2 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                               <span className={`mt-1.5 h-1 w-1 shrink-0 rounded-full ${isDark ? "bg-violet-400" : "bg-blue-400"}`} />
                               {item}
                             </li>
@@ -452,13 +453,13 @@ export default function Workspace() {
                   <p className={`mb-1 text-sm font-bold ${isDark ? "text-blue-400" : "text-blue-700"}`}>
                     Step 3 — AI에게 이렇게 요청해보세요
                   </p>
-                  <p className={`mb-4 text-xs ${isDark ? "text-white/30" : "text-blue-600/60"}`}>
+                  <p className={`mb-4 text-xs ${isDark ? "text-slate-400" : "text-blue-600/60"}`}>
                     아래 프롬프트를 복사해서 Cursor, ChatGPT 등에 붙여넣어 보세요.
                   </p>
                   <div className="space-y-3">
                     {planData.prompts.map((prompt, i) => (
                       <div key={i} className={`flex items-start justify-between gap-4 rounded-xl p-4 ${isDark ? "bg-white/5" : "bg-white shadow-sm"}`}>
-                        <p className={`text-sm leading-6 ${isDark ? "text-white/80" : "text-slate-700"}`}>{prompt}</p>
+                        <p className={`text-sm leading-6 ${isDark ? "text-slate-200" : "text-slate-700"}`}>{prompt}</p>
                         <button type="button" onClick={() => handleCopy(prompt, i)}
                           className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${copied === i ? isDark ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-green-200 bg-green-50 text-green-600" : isDark ? "border-white/10 text-white/50 hover:bg-white/10" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
                           {copied === i ? "복사됨!" : "복사"}
@@ -484,7 +485,7 @@ export default function Workspace() {
                     {activeTab === "error" ? (
                       <>
                         <p className={`mb-1 text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>에러가 생겼나요?</p>
-                        <p className={`mb-4 text-sm ${isDark ? "text-white/40" : "text-slate-500"}`}>
+                        <p className={`mb-4 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                           에러 메시지를 아래에 붙여넣으면 AI가 쉬운 말로 해석해드려요.
                         </p>
                         <textarea value={errorText} onChange={(e) => setErrorText(e.target.value)}
@@ -498,17 +499,17 @@ export default function Workspace() {
                         {errorData && (
                           <div className={`mt-4 rounded-xl border p-4 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
                             <div className="mb-3">
-                              <p className={`mb-1 text-xs font-bold uppercase tracking-wider ${isDark ? "text-red-400" : "text-red-600"}`}>에러 원인</p>
-                              <p className={`text-sm leading-7 ${isDark ? "text-white/80" : "text-slate-700"}`}>{errorData.cause}</p>
+                              <p className="mb-1 text-xs font-bold uppercase tracking-wider text-red-500">에러 원인</p>
+                              <p className={`text-sm leading-7 ${isDark ? "text-slate-300" : "text-slate-700"}`}>{errorData.cause}</p>
                             </div>
                             <div className="mb-3">
-                              <p className={`mb-1 text-xs font-bold uppercase tracking-wider ${isDark ? "text-green-400" : "text-green-600"}`}>해결 방법</p>
-                              <p className={`text-sm leading-7 ${isDark ? "text-white/80" : "text-slate-700"}`}>{errorData.solution}</p>
+                              <p className="mb-1 text-xs font-bold uppercase tracking-wider text-green-500">해결 방법</p>
+                              <p className={`text-sm leading-7 ${isDark ? "text-slate-300" : "text-slate-700"}`}>{errorData.solution}</p>
                             </div>
                             <div>
-                              <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-blue-400" : "text-blue-600"}`}>AI에게 이렇게 요청해보세요</p>
+                              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-blue-500">AI에게 이렇게 요청해보세요</p>
                               <div className={`flex items-start justify-between gap-3 rounded-xl p-3 ${isDark ? "bg-white/5" : "bg-white"}`}>
-                                <p className={`text-sm leading-6 ${isDark ? "text-white/80" : "text-slate-700"}`}>{errorData.prompt}</p>
+                                <p className={`text-sm leading-6 ${isDark ? "text-slate-200" : "text-slate-700"}`}>{errorData.prompt}</p>
                                 <button type="button" onClick={() => handleErrorCopy(errorData.prompt)}
                                   className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${errorCopied ? isDark ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-green-200 bg-green-50 text-green-600" : isDark ? "border-white/10 text-white/50 hover:bg-white/10" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
                                   {errorCopied ? "복사됨!" : "복사"}
@@ -521,7 +522,7 @@ export default function Workspace() {
                     ) : (
                       <>
                         <p className={`mb-1 text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>프롬프트를 더 좋게 만들어드려요</p>
-                        <p className={`mb-4 text-sm ${isDark ? "text-white/40" : "text-slate-500"}`}>
+                        <p className={`mb-4 text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
                           AI에게 보낼 프롬프트를 입력하면 더 구체적이고 효과적으로 개선해드려요.
                         </p>
                         <textarea value={promptInput} onChange={(e) => setPromptInput(e.target.value)}
@@ -536,12 +537,12 @@ export default function Workspace() {
                           <div className={`mt-4 space-y-4 rounded-xl border p-4 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
                             <div className="grid gap-3 sm:grid-cols-2">
                               <div className={`rounded-xl border p-4 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white"}`}>
-                                <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-red-400" : "text-red-500"}`}>원본 프롬프트</p>
-                                <p className={`text-sm leading-6 ${isDark ? "text-white/50" : "text-slate-500"}`}>{promptData.original}</p>
+                                <p className="mb-2 text-xs font-bold uppercase tracking-wider text-red-500">원본 프롬프트</p>
+                                <p className={`text-sm leading-6 ${isDark ? "text-slate-400" : "text-slate-500"}`}>{promptData.original}</p>
                               </div>
                               <div className={`rounded-xl border p-4 ${isDark ? "border-violet-500/30 bg-violet-500/5" : "border-blue-200 bg-blue-50"}`}>
                                 <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-violet-400" : "text-blue-600"}`}>개선된 프롬프트</p>
-                                <p className={`text-sm leading-6 ${isDark ? "text-white/80" : "text-slate-700"}`}>{promptData.improved}</p>
+                                <p className={`text-sm leading-6 ${isDark ? "text-slate-300" : "text-slate-700"}`}>{promptData.improved}</p>
                               </div>
                             </div>
                             <button type="button" onClick={() => handlePromptCopy(promptData.improved)}
@@ -549,14 +550,14 @@ export default function Workspace() {
                               {promptCopied ? "✓ 복사됨!" : "개선된 프롬프트 복사하기"}
                             </button>
                             <div>
-                              <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-white/40" : "text-slate-400"}`}>이렇게 바꾼 이유</p>
-                              <p className={`text-sm leading-7 ${isDark ? "text-white/60" : "text-slate-600"}`}>{promptData.reason}</p>
+                              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">이렇게 바꾼 이유</p>
+                              <p className={`text-sm leading-7 ${isDark ? "text-slate-300" : "text-slate-600"}`}>{promptData.reason}</p>
                             </div>
                             <div>
-                              <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-white/40" : "text-slate-400"}`}>좋은 프롬프트 작성 팁</p>
+                              <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-400">좋은 프롬프트 작성 팁</p>
                               <ul className="space-y-2">
                                 {promptData.tips.map((tip, i) => (
-                                  <li key={i} className={`flex items-start gap-2 text-sm ${isDark ? "text-white/60" : "text-slate-600"}`}>
+                                  <li key={i} className={`flex items-start gap-2 text-sm ${isDark ? "text-slate-300" : "text-slate-600"}`}>
                                     <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${isDark ? "bg-violet-400" : "bg-blue-500"}`} />
                                     {tip}
                                   </li>

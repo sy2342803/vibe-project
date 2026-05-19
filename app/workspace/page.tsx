@@ -73,7 +73,7 @@ export default function Workspace() {
   const [copied, setCopied] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<"error" | "prompt">("error");
 
-  // PDF로 캡처할 영역을 지정하기 위한 Reference 객체
+  // PDF로 캡처할 타겟 영역 지정을 위한 Ref
   const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -194,36 +194,38 @@ export default function Workspace() {
     setTimeout(() => setPromptCopied(false), 2000);
   };
 
-  // 🔥 화면을 캡처하여 고화질 PDF 보고서 파일로 다운로드해 주는 핵심 함수
+  // 🔥 Vercel 배포 서버 환경 및 모바일 브라우저에서도 오류 없는 PDF 생성 함수
   const handleDownloadPDF = async () => {
     if (!reportRef.current) return;
     setPdfDownloading(true);
 
     try {
       const element = reportRef.current;
-      // 캡처 화질 향상을 위해 scale 옵션을 2로 지정
+      
+      // 배포 사이트에서 캔버스 렌더링 시 발생하는 충돌 방지 최적화 옵션
       const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: isDark ? "#0c0c1d" : "#ffffff",
+        scale: 2,               // 출력 해상도 및 화질 2배 업그레이드
+        useCORS: true,          // 외부 도메인 및 리소스 차단 방지
+        logging: false,         // 불필요한 콘솔 오류 로그 마스킹
+        allowTaint: true,       // 캡처 시 오염 이미지 무시하고 우회 처리
+        backgroundColor: isDark ? "#0c0c1d" : "#ffffff", // 현재 테마 배경색 강제 적용
       });
 
       const imgData = canvas.toDataURL("image/png");
       
-      // A4 용지 규격 기준 설정 (mm단위)
-      const imgWidth = 210;
-      const pageHeight = 295;
+      const imgWidth = 210;    // A4 가로 규격 크기 (mm)
+      const pageHeight = 295;   // A4 세로 규격 크기 (mm)
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
 
       const doc = new jsPDF("p", "mm", "a4");
       let position = 0;
 
-      // 첫 페이지 추가
+      // 첫 페이지 생성
       doc.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
       heightLeft -= pageHeight;
 
-      // 내용이 길어 A4 한 페이지를 넘어가면 멀티 페이지로 분할 생성
+      // 만약 캡처할 분량이 길어 A4 세로 기준(295mm)을 초과하면 자동 다음 페이지 분할 생성
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight;
         doc.addPage();
@@ -231,11 +233,11 @@ export default function Workspace() {
         heightLeft -= pageHeight;
       }
 
-      // 기획서 파일명 지정 후 저장 다운로드
+      // PDF 저장 및 강제 다운로드 작동
       doc.save("vibe-project-plan.pdf");
     } catch (error) {
-      console.error("PDF 다운로드 중 실패:", error);
-      alert("PDF를 생성하는 과정에서 문제가 발생했습니다.");
+      console.error("PDF 다운로드 에러 디버깅 로깅:", error);
+      alert(`PDF 생성 실패: ${error instanceof Error ? error.message : "알 수 없는 시스템 오류"}`);
     } finally {
       setPdfDownloading(false);
     }
@@ -406,13 +408,13 @@ export default function Workspace() {
             )}
 
             {!loading && planData && (
-              /* 🔥 PDF 출력을 위해 이 아래 카드 전체를 하나의 div(reportRef)로 묶어 캡처합니다 */
-              <div ref={reportRef} className={`mt-10 rounded-2xl p-2 transition-colors duration-500 ${isDark ? "bg-[#0c0c1d]" : "bg-white"}`}>
+              /* 🔥 PDF 추출 스냅샷용 컨테이너 박스 시작 */
+              <div ref={reportRef} className={`mt-10 rounded-2xl p-4 transition-colors duration-500 ${isDark ? "bg-[#0c0c1d]" : "bg-white"}`}>
                 <div className={`rounded-2xl border p-5 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
                   <p className={`mb-2 text-xs font-semibold uppercase tracking-widest ${isDark ? "text-white/30" : "text-slate-400"}`}>
                     내가 입력한 아이디어
                   </p>
-                  <p className={`text-sm leading-7 ${isDark ? "text-white/77" : "text-slate-700"}`}>{idea}</p>
+                  <p className={`text-sm leading-7 ${isDark ? "text-white/80" : "text-slate-700"}`}>{idea}</p>
                 </div>
 
                 <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -456,7 +458,7 @@ export default function Workspace() {
                   <div className="space-y-3">
                     {planData.prompts.map((prompt, i) => (
                       <div key={i} className={`flex items-start justify-between gap-4 rounded-xl p-4 ${isDark ? "bg-white/5" : "bg-white shadow-sm"}`}>
-                        <p className={`text-sm leading-6 ${isDark ? "text-white/77" : "text-slate-700"}`}>{prompt}</p>
+                        <p className={`text-sm leading-6 ${isDark ? "text-white/80" : "text-slate-700"}`}>{prompt}</p>
                         <button type="button" onClick={() => handleCopy(prompt, i)}
                           className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${copied === i ? isDark ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-green-200 bg-green-50 text-green-600" : isDark ? "border-white/10 text-white/50 hover:bg-white/10" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
                           {copied === i ? "복사됨!" : "복사"}
@@ -497,16 +499,16 @@ export default function Workspace() {
                           <div className={`mt-4 rounded-xl border p-4 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-slate-50"}`}>
                             <div className="mb-3">
                               <p className={`mb-1 text-xs font-bold uppercase tracking-wider ${isDark ? "text-red-400" : "text-red-600"}`}>에러 원인</p>
-                              <p className={`text-sm leading-7 ${isDark ? "text-white/77" : "text-slate-700"}`}>{errorData.cause}</p>
+                              <p className={`text-sm leading-7 ${isDark ? "text-white/80" : "text-slate-700"}`}>{errorData.cause}</p>
                             </div>
                             <div className="mb-3">
                               <p className={`mb-1 text-xs font-bold uppercase tracking-wider ${isDark ? "text-green-400" : "text-green-600"}`}>해결 방법</p>
-                              <p className={`text-sm leading-7 ${isDark ? "text-white/77" : "text-slate-700"}`}>{errorData.solution}</p>
+                              <p className={`text-sm leading-7 ${isDark ? "text-white/80" : "text-slate-700"}`}>{errorData.solution}</p>
                             </div>
                             <div>
                               <p className={`mb-2 text-xs font-bold uppercase tracking-wider ${isDark ? "text-blue-400" : "text-blue-600"}`}>AI에게 이렇게 요청해보세요</p>
                               <div className={`flex items-start justify-between gap-3 rounded-xl p-3 ${isDark ? "bg-white/5" : "bg-white"}`}>
-                                <p className={`text-sm leading-6 ${isDark ? "text-white/77" : "text-slate-700"}`}>{errorData.prompt}</p>
+                                <p className={`text-sm leading-6 ${isDark ? "text-white/80" : "text-slate-700"}`}>{errorData.prompt}</p>
                                 <button type="button" onClick={() => handleErrorCopy(errorData.prompt)}
                                   className={`shrink-0 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${errorCopied ? isDark ? "border-green-500/30 bg-green-500/10 text-green-400" : "border-green-200 bg-green-50 text-green-600" : isDark ? "border-white/10 text-white/50 hover:bg-white/10" : "border-slate-200 text-slate-500 hover:bg-slate-50"}`}>
                                   {errorCopied ? "복사됨!" : "복사"}

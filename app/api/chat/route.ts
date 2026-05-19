@@ -31,7 +31,6 @@ async function getAvailableModels() {
 async function getPreferredModels() {
   const availableModels = await getAvailableModels();
 
-  // 더 안정적인 모델부터 우선 시도
   const preferredOrder = [
     "gemini-2.0-flash",
     "gemini-2.0-flash-001",
@@ -64,9 +63,23 @@ async function getPreferredModels() {
   return fallback;
 }
 
-async function tryModel(model: string, prompt: string) {
+async function tryModel(model: string, prompt: string, useJson: boolean = true) {
   if (!API_KEY) {
     throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
+  }
+
+  const body: any = {
+    contents: [
+      {
+        parts: [{ text: prompt }],
+      },
+    ],
+  };
+
+  if (useJson) {
+    body.generationConfig = {
+      responseMimeType: "application/json",
+    };
   }
 
   const res = await fetch(
@@ -76,16 +89,7 @@ async function tryModel(model: string, prompt: string) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [{ text: prompt }],
-          },
-        ],
-        generationConfig: {
-          responseMimeType: "application/json",
-        },
-      }),
+      body: JSON.stringify(body),
     }
   );
 
@@ -104,13 +108,13 @@ async function tryModel(model: string, prompt: string) {
   return { text, model };
 }
 
-async function callGemini(prompt: string) {
+async function callGemini(prompt: string, useJson: boolean = true) {
   const modelsToTry = await getPreferredModels();
   const errors: string[] = [];
 
   for (const model of modelsToTry) {
     try {
-      const result = await tryModel(model, prompt);
+      const result = await tryModel(model, prompt, useJson);
       return result;
     } catch (error: any) {
       errors.push(`${model}: ${error.message}`);
@@ -149,6 +153,7 @@ export async function POST(req: NextRequest) {
     const { idea, type } = await req.json();
 
     let prompt = "";
+    let useJson = true;
 
     if (type === "plan") {
       prompt = `
@@ -184,7 +189,7 @@ export async function POST(req: NextRequest) {
   "prompt": "이 에러를 AI에게 해결 요청하는 프롬프트"
 }
       `;
-        } else if (type === "prompt") {
+    } else if (type === "prompt") {
       prompt = `
 당신은 비전공자 대학생의 바이브 코딩을 도와주는 친절한 AI 튜터입니다.
 아래의 막연한 프롬프트를 AI가 이해하기 쉬운 구체적인 바이브 코딩용 프롬프트로 개선해주세요.
@@ -199,6 +204,57 @@ export async function POST(req: NextRequest) {
   "tips": ["좋은 프롬프트 작성 팁 1", "좋은 프롬프트 작성 팁 2", "좋은 프롬프트 작성 팁 3"]
 }
       `;
+    } else if (type === "guide") {
+      useJson = false;
+
+      // 레슨 맥락 파싱
+      const lessonMatch = idea.match(/\[레슨:\s*(.+?)\]/);
+      const lessonTitle = lessonMatch ? lessonMatch[1] : null;
+      const questionOnly = idea
+        .replace(/\[레슨:.*?\]/g, "")
+        .replace(/이전 대화:/g, "")
+        .trim();
+
+      prompt = `
+당신은 VIBE PROJECT의 바이브코딩 전문 AI 튜터입니다.
+
+## 당신의 역할
+- 비전공자, 특히 지역 대학의 문과생들에게 바이브코딩을 가르치는 친절한 선생님
+- 어려운 개발 용어 대신 일상적인 말로 설명
+- 실용적인 예시와 함께 설명
+- 학생이 스스로 할 수 있다는 자신감을 심어주기
+
+## 바이브코딩 핵심 지식
+- 바이브코딩(Vibe Coding): AI와 자연어로 대화하며 코드를 만드는 방식
+- 2025년 Andrej Karpathy가 제안한 새로운 개발 패러다임
+- 핵심 도구: Cursor, ChatGPT, Claude, Gemini, v0.dev, Bolt.new
+- 비전공자도 아이디어를 코드로 구현할 수 있게 해주는 혁신적인 방법
+
+## 좋은 프롬프트 vs 나쁜 프롬프트
+나쁜 예: "맛집 앱 만들어줘"
+좋은 예: "React와 Tailwind CSS를 사용해서 학교 근처 맛집을 카드 형태로 보여주는 메인 페이지를 만들어줘. 각 카드에는 가게 이름, 별점, 리뷰 수가 포함되어야 해."
+
+## 바이브코딩 5단계
+1. 아이디어 구체화
+2. 기획 정리
+3. 프롬프트 작성
+4. 코드 적용
+5. 에러 해결
+
+## 현재 상황
+${lessonTitle ? `학생이 현재 보고 있는 레슨: "${lessonTitle}"` : "학생이 일반적인 질문을 하고 있습니다."}
+
+## 답변 규칙
+- 항상 한국어로 답변
+- 3-5문장으로 간결하게
+- 어려운 용어는 쉽게 풀어서 설명
+- 필요하면 짧은 코드 예시 포함
+- 학생을 응원하는 따뜻하고 친근한 톤 유지
+- 이전 대화 맥락을 참고해서 자연스럽게 이어서 답변
+
+## 대화 내용
+${questionOnly}
+      `;
     } else {
       return NextResponse.json(
         { success: false, error: "잘못된 요청 타입입니다." },
@@ -206,14 +262,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = await callGemini(prompt);
+    const result = await callGemini(prompt, useJson);
 
+    // guide 타입은 텍스트 그대로 반환
+    if (type === "guide") {
+      return NextResponse.json({
+        success: true,
+        data: result.text,
+        model: result.model,
+      });
+    }
+
+    // 나머지는 JSON 파싱
     const jsonMatch = result.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("JSON 형식 응답을 파싱하지 못했습니다.");
     }
 
-    // JSON 정리 (불필요한 문자 제거)
     let cleanedJson = jsonMatch[0]
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -224,7 +289,6 @@ export async function POST(req: NextRequest) {
     try {
       parsed = JSON.parse(cleanedJson);
     } catch {
-      // 마지막 중괄호까지만 잘라서 다시 시도
       const lastBrace = cleanedJson.lastIndexOf("}");
       cleanedJson = cleanedJson.substring(0, lastBrace + 1);
       parsed = JSON.parse(cleanedJson);

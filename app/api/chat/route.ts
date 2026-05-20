@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
-// [기존 유지] 사용 가능한 구글 모델 목록을 조회하는 뼈대
+// ── 모델 조회 ──
 async function getAvailableModels() {
   if (!API_KEY) {
     throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
@@ -29,13 +29,13 @@ async function getAvailableModels() {
   return models;
 }
 
-// [기존 유지] 선호하는 최신 모델 순서 배치
+// ── 선호 모델 순서 ──
 async function getPreferredModels() {
   const availableModels = await getAvailableModels();
 
   const preferredOrder = [
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
+    "gemini-2.5-flash-preview-04-17",
+    "gemini-2.5-pro-preview-05-06",
     "gemini-2.0-flash",
     "gemini-2.0-flash-001",
     "gemini-2.0-flash-lite",
@@ -47,9 +47,7 @@ async function getPreferredModels() {
     availableModels.includes(model)
   );
 
-  if (matched.length > 0) {
-    return matched;
-  }
+  if (matched.length > 0) return matched;
 
   const fallback = availableModels.filter((model: string) =>
     model.includes("gemini")
@@ -62,18 +60,14 @@ async function getPreferredModels() {
   return fallback;
 }
 
-// [기존 유지] 모델 호출 API 가공 레이어
+// ── 모델 호출 ──
 async function tryModel(model: string, prompt: string, useJson: boolean = true) {
   if (!API_KEY) {
     throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
   }
 
   const body: any = {
-    contents: [
-      {
-        parts: [{ text: prompt }],
-      },
-    ],
+    contents: [{ parts: [{ text: prompt }] }],
   };
 
   if (useJson) {
@@ -86,9 +80,7 @@ async function tryModel(model: string, prompt: string, useJson: boolean = true) 
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
     {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     }
   );
@@ -108,15 +100,14 @@ async function tryModel(model: string, prompt: string, useJson: boolean = true) 
   return { text, model };
 }
 
-// [기존 유지] 폴백 순회 호출기
+// ── 폴백 순회 호출기 ──
 async function callGemini(prompt: string, useJson: boolean = true) {
   const modelsToTry = await getPreferredModels();
   const errors: string[] = [];
 
   for (const model of modelsToTry) {
     try {
-      const result = await tryModel(model, prompt, useJson);
-      return result;
+      return await tryModel(model, prompt, useJson);
     } catch (error: any) {
       errors.push(`${model}: ${error.message}`);
     }
@@ -127,76 +118,121 @@ async function callGemini(prompt: string, useJson: boolean = true) {
   );
 }
 
-// [기존 유지] GET 라우트 호환
+// ──────────────────────────────────────────────
+// 🎭 톤(tone) 기반 페르소나 프리셋 생성기
+// ──────────────────────────────────────────────
+function getToneDirective(tone: string): string {
+  if (tone === "tsundere") {
+    return `
+[페르소나 지시]
+당신은 실력은 압도적이지만 말투가 퉁명스럽고 직설적인 '츤데레 선배 개발자'입니다.
+- 반말을 사용하세요. ("~해", "~거든", "~잖아", "~라고")
+- 첫 문장은 살짝 핀잔이나 놀림으로 시작하세요. (예: "이것도 모르냐...", "한심하긴 한데...")
+- 설명은 팩트 위주로 군더더기 없이 날카롭게 전달하되, 내용 자체는 정확하고 도움이 되어야 합니다.
+- 마지막 문장에만 살짝 응원이나 칭찬을 숨기세요. (예: "...근데 여기까지 온 건 좀 대단하긴 하다.", "못할 줄 알았는데 의외네.")
+- 이모지는 최소한으로 사용하세요.
+    `;
+  }
+
+  // 기본: 천사 멘토
+  return `
+[페르소나 지시]
+당신은 세상에서 가장 다정하고 인내심 많은 '천사 코치 멘토'입니다.
+- 존댓말을 사용하세요. ("~해요", "~이에요", "~할 수 있어요")
+- 모든 설명에 친근한 비유와 격려를 곁들이세요. (예: "마치 레고 블록을 조립하는 것처럼...")
+- 실수나 에러를 부정적으로 표현하지 말고 "배움의 기회"로 리프레이밍하세요.
+- 이모지를 적극 활용하여 따뜻한 분위기를 만드세요.
+- "잘하고 계세요!", "거의 다 왔어요!" 같은 응원을 자연스럽게 넣으세요.
+  `;
+}
+
+// ── GET ──
 export async function GET() {
   try {
     const models = await getAvailableModels();
     const preferredModels = await getPreferredModels();
 
-    return NextResponse.json({
-      success: true,
-      models,
-      preferredModels,
-    });
+    return NextResponse.json({ success: true, models, preferredModels });
   } catch (error: any) {
     console.error("모델 조회 오류:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "모델 조회 중 오류가 발생했습니다.",
-      },
+      { success: false, error: error.message || "모델 조회 중 오류가 발생했습니다." },
       { status: 500 }
     );
   }
 }
 
-// 🚀 POST 라우트: 비전공자 맞춤형 친절한 멘토 버전
+// ──────────────────────────────────────────────
+// 🚀 POST 라우트
+// ──────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const { idea, type, platform, bm } = await req.json();
+    // ✅ [수정] tone을 구조분해에 포함
+    const { idea, type, platform, bm, tone } = await req.json();
+
+    const toneDirective = getToneDirective(tone || "kind");
 
     let prompt = "";
     let useJson = true;
 
-    // 1. 메인 초보자 친화적 기획서 생성 엔진
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 1. 메인 기획서 생성
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (type === "plan") {
       prompt = `
-당신은 코딩과 개발 용어를 전혀 모르는 비전공자 대학생들을 위한 최고의 친절한 스타트업 멘토이자 가이드입니다.
+${toneDirective}
+
+당신은 코딩과 개발 용어를 전혀 모르는 비전공자 대학생들을 위한 최고의 스타트업 멘토이자 가이드입니다.
 사용자가 입력한 대략적인 아이디어를 분석하여, 개발자 수준의 전문성을 내포하되 "철저하게 초등학생도 이해할 수 있는 쉬운 일상 용어와 비유"를 사용하여 기획 요건을 정리하고 JSON 포맷으로 생성해야 합니다.
+
+**위 [페르소나 지시]의 말투를 summary, problem, target, 각 기능의 desc, criteria 전체에 일관되게 적용하세요.**
 
 사용자 아이디어 원문: "${idea}"
 선택된 타겟 플랫폼 규격: "${platform || "지정되지 않음 (전체 플랫폼)"}"
 선택된 비즈니스 모델(BM): "${bm || "지정되지 않음"}"
 
-아래의 JSON Schema 형식을 정확하게 준수하여 채워주세요. 프론트엔드와 완벽하게 연동되어야 하므로 Key 명칭을 절대 바꾸지 마십시오.
+아래의 JSON Schema 형식을 정확하게 준수하여 채워주세요. Key 명칭을 절대 바꾸지 마십시오.
 마크다운(\`\`\`json) 등 앞뒤 부연설명 없이 오직 순수한 JSON만 반환해야 합니다:
 
 {
-  "summary": "비전공자가 이 기획을 보고 바로 안심할 수 있도록, 이 서비스의 핵심 구조와 오늘 당장 무엇을 만들면 되는지 다정한 말투로 요약한 코칭 메시지 (2-3문장)",
-  "problem": "이 서비스가 해결하려는 불편함을 친근한 일상 사례를 들어 쉽게 정의한 내용 (2-3문장)",
+  "summary": "이 서비스의 핵심 구조와 오늘 당장 무엇을 만들면 되는지 페르소나 말투로 요약한 코칭 메시지 (2-3문장)",
+  "problem": "이 서비스가 해결하려는 불편함을 친근한 일상 사례를 들어 페르소나 말투로 정의 (2-3문장)",
   "target": "이 서비스를 가장 먼저 좋아해 줄 구체적인 사람들의 모습이나 페르소나 설명 (2-3문장)",
   "userStories": [
-    "유저 시나리오 1 (형식: [어떤 유저]는 [불편함을 해결하거나 재미를 느끼기] 위해 [화면에서 어떤 행동]을 할 수 있다)",
-    "유저 시나리오 2"
+    "[어떤 유저]는 [불편함 해결 or 재미] 위해 [화면에서 어떤 행동]을 할 수 있다",
+    "유저 시나리오 2",
+    "유저 시나리오 3",
+    "유저 시나리오 4",
+    "유저 시나리오 5"
   ],
   "features": [
     {
       "id": "SYS-REQ-01",
-      "name": "쉽게 풀어쓴 기능 이름 (예: 1초만에 물건 등록하는 카메라 버튼)",
-      "desc": "이 기능이 왜 필요하고 유저가 어떻게 쓰는지 친절하게 설명",
+      "name": "쉽게 풀어쓴 기능 이름",
+      "desc": "이 기능이 왜 필요하고 유저가 어떻게 쓰는지 페르소나 말투로 설명",
       "criteria": [
-        "AI에게 코드를 다 짜달라고 한 뒤, 제대로 만들어졌는지 눈으로 검사할 기준 1 (예: 카메라 버튼을 누르면 스마트폰 갤러리가 열려야 해요.)",
-        "AI에게 검사할 기준 2"
+        "AI 코딩 완료 후 눈으로 검사할 기준 1",
+        "검사 기준 2",
+        "검사 기준 3"
       ]
     },
     {
       "id": "SYS-REQ-02",
-      "name": "쉽게 풀어쓴 기능 이름 2",
+      "name": "기능 이름 2",
       "desc": "기능 설명",
-      "criteria": [
-        "AI에게 검사할 기준 1",
-        "AI에게 검사할 기준 2"
-      ]
+      "criteria": ["검사 기준 1", "검사 기준 2"]
+    },
+    {
+      "id": "SYS-REQ-03",
+      "name": "기능 이름 3",
+      "desc": "기능 설명",
+      "criteria": ["검사 기준 1", "검사 기준 2"]
+    },
+    {
+      "id": "SYS-REQ-04",
+      "name": "기능 이름 4",
+      "desc": "기능 설명",
+      "criteria": ["검사 기준 1", "검사 기준 2"]
     }
   ],
   "screens": [
@@ -207,84 +243,116 @@ export async function POST(req: NextRequest) {
     },
     {
       "id": "UI-SCR-02",
-      "name": "쉬운 화면 이름 2",
-      "desc": "화면 레이아웃 및 흐름 상세 설명"
+      "name": "화면 이름 2",
+      "desc": "화면 레이아웃 및 흐름 설명"
+    },
+    {
+      "id": "UI-SCR-03",
+      "name": "화면 이름 3",
+      "desc": "화면 레이아웃 및 흐름 설명"
+    },
+    {
+      "id": "UI-SCR-04",
+      "name": "화면 이름 4",
+      "desc": "화면 레이아웃 및 흐름 설명"
     }
   ],
   "prompts": {
     "ui": [
-      "v0.dev 나 Bolt.new 사이트에 그대로 복사+붙여넣기 하면 '코딩 없이' 실무 등급의 세련된 화면 디자인 컴포넌트가 마법처럼 튀어나오도록, 레이아웃/색상/Shadcn UI 아이콘까지 완벽하게 지정하여 명령하는 한글 초고품질 프롬프트 1",
-      "사용자가 버튼을 누르거나 필터를 바꿀 때 화면이 부드럽게 움직이도록 유도하는 디자인 완성도 업그레이드용 프롬프트 2"
+      "v0.dev나 Bolt.new에 복사+붙여넣기하면 세련된 화면 디자인이 튀어나오도록, 레이아웃/색상/Shadcn UI 아이콘까지 완벽하게 지정한 한글 프롬프트 1",
+      "버튼 인터랙션과 애니메이션, 반응형 레이아웃까지 포함한 디자인 업그레이드용 프롬프트 2",
+      "세부 페이지(상세/설정/프로필 등)의 레이아웃을 지정하는 프롬프트 3"
     ],
     "ide": [
-      "Cursor 나 Windsurf 같은 AI 코드 에디터 프로그램의 채팅창에 붙여넣어서 '이 앱의 전체 폴더 뼈대와 기본 파일들을 알아서 만들라'고 지시하는 초보자 맞춤형 아키텍처 프롬프트",
-      "데이터가 화면 및 서버 사이에서 안전하게 오고 가도록 API 라우터를 자동으로 파주는 연결용 프롬프트"
+      "Cursor/Windsurf 채팅창에 붙여넣어서 전체 폴더 뼈대와 기본 파일을 생성하라는 아키텍처 프롬프트",
+      "API 라우터와 데이터 연결을 자동으로 짜주는 프롬프트",
+      "인증/로그인 흐름을 구현하라는 프롬프트"
     ],
-    "db": "데이터베이스(엑셀처럼 정보가 저장되는 방)에 데이터를 쌓기 위해 필요한 테이블 구조입니다. Supabase나 SQL 툴에 그대로 붙여넣을 수 있는 완벽한 DDL SQL 코드 블록을 작성하고, 비전공자도 이해하기 쉽게 '어떤 정보들이 저장되는지' 해설을 덧붙여주세요."
+    "db": "Supabase SQL Editor에 그대로 붙여넣을 수 있는 완전한 DDL SQL 코드. CREATE TABLE 문과 각 컬럼에 대한 한글 주석을 반드시 포함. RLS(Row Level Security) 정책 예시도 1개 이상 포함."
   }
 }
       `;
-    } 
-    
-    // 2. Step 4 전용: 초보자 맞춤 에러 코치
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 2. 에러 해결사
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "error") {
       prompt = `
-당신은 초보자를 위한 에러 코치입니다. 아래 에러 로그를 분석하여 아주 쉬운 말로 원인과 해결책을 JSON으로 리턴하세요.
+${toneDirective}
+
+당신은 초보자를 위한 에러 코치입니다. 아래 에러 로그를 분석하여 **위 페르소나 말투**로 원인과 해결책을 JSON으로 리턴하세요.
+
 에러 내용: "${idea}"
 
 아래 JSON 형식으로만 답변하세요:
 {
-  "cause": "어려운 컴퓨터 용어 빼고, 뭐가 꼬인 건지 일상 비유로 설명 (2-3문장)",
-  "solution": "메모장을 켜서 몇 번째 줄을 어떻게 고치면 되는지 주니어/비전공자도 따라 할 수 있는 가이드라인",
-  "prompt": "Cursor나 코딩 AI에게 이 문제를 해결해달라고 요청할 때 복사해서 붙여넣기 좋은 최적의 디버깅 프롬프트 문장"
+  "cause": "뭐가 꼬인 건지 페르소나 말투로 일상 비유를 들어 설명 (2-3문장)",
+  "solution": "비전공자도 따라 할 수 있게 단계별로 어떻게 고치면 되는지 페르소나 말투로 가이드 (3-4문장)",
+  "prompt": "Cursor나 코딩 AI에게 이 문제를 해결해달라고 복붙할 최적의 디버깅 프롬프트 문장 (한글, 1-2문장)"
 }
       `;
-    } 
-    
-    // 3. Step 4 전용: 프롬프트 리파이너
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 3. 프롬프트 리파이너
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "prompt") {
       prompt = `
-당신은 최고 수준의 프롬프트 엔지니어입니다. 사용자가 입력한 러프한 프롬프트를 AI 코딩 툴(Cursor, v0 등)이 가장 잘 알아듣는 엔지니어링 폼으로 빌드업하세요.
+${toneDirective}
+
+당신은 최고 수준의 프롬프트 엔지니어입니다.
+사용자가 입력한 러프한 프롬프트를 AI 코딩 툴(Cursor, v0 등)이 가장 잘 알아듣는 엔지니어링 품질로 업그레이드하세요.
+
 원본 프롬프트: "${idea}"
 
 아래 JSON 형식으로만 답변해주세요:
 {
-  "original": "원본 입력 조건 그대로 출력",
-  "improved": "역할 부여(Role), 제약 조건(Constraints), 출력 포맷(Output)이 완벽하게 가미된 초고품질 고도화 프롬프트 문장"
+  "original": "원본 입력 그대로",
+  "improved": "역할(Role), 제약 조건(Constraints), 출력 포맷(Output), 기술 스택 지정까지 완벽하게 가미된 고도화 프롬프트 (한글)"
 }
       `;
-    } 
-    
-    // 4. Step 4 전용: 더미 데이터 생성기 (파싱 안정성 대폭 개선)
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 4. 목 데이터 생성기
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "mock") {
       prompt = `
-사용자가 기획 중인 서비스 아이디어 주제를 기반으로, 프론트엔드 마크업 개발에 즉시 임베딩할 수 있는 고품질의 가짜 목업 JSON 데이터를 생성하세요.
+기획 주제를 기반으로 프론트엔드에 즉시 사용할 수 있는 고품질 목업 JSON 데이터를 생성하세요.
 기획 주제: "${idea}"
 
-데이터는 무조건 배열 구조를 포함해야 하며 가짜 샘플 데이터 객체가 5개 이상 꼼꼼하게 들어가 있어야 합니다. 
-아래 구조의 JSON 규격에 맞춰 일반 배열 오브젝트를 리턴하세요. 절대로 문자열 내부 이스케이프 처리를 위해 애쓰지 마세요:
+반드시 아래 구조를 따르세요. mockData 배열 안에 샘플 객체가 5~8개 들어가야 합니다.
+각 객체에는 id, 제목, 설명, 가격/날짜 등 주제에 맞는 현실적인 필드를 포함하세요.
+
 {
   "mockData": [
-    { "id": 1, "title": "샘플 데이터 예시" }
+    { "id": 1, "title": "샘플 1", "description": "설명", "price": 10000, "createdAt": "2025-01-15" },
+    { "id": 2, "title": "샘플 2", "description": "설명", "price": 25000, "createdAt": "2025-01-16" }
   ]
 }
       `;
-    } 
-    
-    // 5. Step 4 전용: 깃 커밋 메시지 메이커
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 5. 커밋 메시지 메이커
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "commit") {
       prompt = `
-개발자가 작업한 내용을 바탕으로 Conventional Commits 규칙(feat:, fix:, refactor:, docs:)에 완벽히 부합하는 세련된 영어 커밋 메시지를 빌드하세요.
+개발자가 작업한 내용을 바탕으로 Conventional Commits 규칙(feat:, fix:, refactor:, docs:, style:, chore:)에 부합하는 세련된 영어 커밋 메시지를 작성하세요.
+
 작업 내용: "${idea}"
 
 아래 JSON 형식으로만 답변하세요:
 {
-  "message": "feat: 완성된 커밋 메시지 한 줄 기입"
+  "message": "feat: 완성된 커밋 메시지"
 }
       `;
-    } 
-    
-    // 6. [기존 유지] 가이드 도구 호환 레이어
+    }
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 6. 가이드 대화 (비JSON)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "guide") {
       useJson = false;
       const lessonMatch = idea.match(/\[레슨:\s*(.+?)\]/);
@@ -292,19 +360,25 @@ export async function POST(req: NextRequest) {
       const questionOnly = idea.replace(/\[레슨:.*?\]/g, "").replace(/이전 대화:/g, "").trim();
 
       prompt = `
+${toneDirective}
+
 당신은 VIBE PROJECT의 바이브코딩 전문 AI 튜터입니다.
 학생이 현재 보고 있는 레슨: "${lessonTitle || "일반 질문"}"
 대화 내용: ${questionOnly}
 
-한국어로 3-5문장으로 친근하고 쉽게 풀어서 응원하는 톤으로 답변해주세요.
+위 페르소나 말투로 한국어 3-5문장으로 답변해주세요.
       `;
     } else {
-      return NextResponse.json({ success: false, error: "잘못된 요청 타입입니다." }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "잘못된 요청 타입입니다." },
+        { status: 400 }
+      );
     }
 
-    // 기존의 안전한 가용 모델 폴백 순회 함수 호출
+    // ── 모델 호출 ──
     const result = await callGemini(prompt, useJson);
 
+    // guide 타입은 텍스트 그대로 반환
     if (type === "guide") {
       return NextResponse.json({
         success: true,
@@ -313,42 +387,45 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // [개선] 안정적인 정규식 기반 JSON 파싱 및 구조 정리 로직
-    const jsonMatch = result.text.match(/\{[\s\S]*\}/);
+    // ── JSON 파싱 (안정성 강화) ──
+    let cleanedText = result.text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, " ")
+      .trim();
+
+    // 배열 또는 객체 모두 지원
+    const jsonMatch = cleanedText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
     if (!jsonMatch) {
       throw new Error("JSON 형식 응답을 파싱하지 못했습니다.");
     }
 
-    let cleanedJson = jsonMatch[0]
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      // ✨ [수정 반영] 줄바꿈(\n, \r)과 탭(\t)은 살려두고 에러 유발성 제어 문자만 공백 치환
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, " ")
-      .trim();
-
     let parsed;
     try {
-      parsed = JSON.parse(cleanedJson);
+      parsed = JSON.parse(jsonMatch[0]);
     } catch {
       try {
-        const lastBrace = cleanedJson.lastIndexOf("}");
-        cleanedJson = cleanedJson.substring(0, lastBrace + 1);
-        parsed = JSON.parse(cleanedJson);
-      } catch (parseErr) {
+        // 잘린 JSON 복구 시도
+        let fixTarget = jsonMatch[0];
+        const lastBrace = fixTarget.lastIndexOf("}");
+        const lastBracket = fixTarget.lastIndexOf("]");
+        const cutPoint = Math.max(lastBrace, lastBracket);
+        fixTarget = fixTarget.substring(0, cutPoint + 1);
+        parsed = JSON.parse(fixTarget);
+      } catch {
         throw new Error("AI의 출력 데이터를 규격화된 객체로 전환하는 데 실패했습니다.");
       }
     }
 
-    // [보완] mock 데이터가 들어왔을 때 프론트엔드가 요구하는 기존 string 키값 포맷 호환성 가공 레이어
-    if (type === "mock" && parsed && parsed.mockData) {
+    // mock 데이터 가공
+    if (type === "mock") {
+      const mockArray = parsed?.mockData || (Array.isArray(parsed) ? parsed : [parsed]);
       return NextResponse.json({
         success: true,
-        data: {
-          jsonCode: JSON.stringify(parsed.mockData, null, 2)
-        },
+        data: { jsonCode: JSON.stringify(mockArray, null, 2) },
         model: result.model,
-          });
-        }
+      });
+    }
 
     return NextResponse.json({
       success: true,

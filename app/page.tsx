@@ -36,22 +36,6 @@ function useCountUp(target: number, isVisible: boolean, duration = 2000) {
   return count;
 }
 
-// ── 타이핑 애니메이션 훅 ──
-function useTypewriter(text: string, isActive: boolean, speed = 30) {
-  const [displayed, setDisplayed] = useState("");
-  useEffect(() => {
-    if (!isActive) { setDisplayed(""); return; }
-    setDisplayed("");
-    let i = 0;
-    const timer = setInterval(() => {
-      if (i < text.length) { setDisplayed(text.slice(0, i + 1)); i++; }
-      else clearInterval(timer);
-    }, speed);
-    return () => clearInterval(timer);
-  }, [text, isActive, speed]);
-  return displayed;
-}
-
 // ── 데이터 ──
 const features = [
   { number: "01", title: "바이브 코딩 첫걸음", description: "어떻게 질문해야 AI가 좋은 결과를 만들어주는지부터 안내합니다. 좋은 프롬프트를 만드는 감각을 자연스럽게 익힐 수 있습니다.", gradient: "from-blue-500 to-cyan-400", icon: "🎯" },
@@ -82,37 +66,19 @@ const faqs = [
   { question: "과정을 마치면 혼자서도 개발할 수 있게 되나요?", answer: "완벽한 개발자가 되는 것보다, AI와 대화하며 문제를 해결하고 아이디어를 직접 구현하는 감각을 익히는 것이 목표입니다." },
 ];
 
-// ── 영상 플레이어 스텝 ──
-const VIDEO_STEPS = [
-  {
-    time: "0:00", label: "아이디어 입력", icon: "💡", emoji: "✏️",
-    title: "떠오른 아이디어를 그냥 적기만 하면 돼요",
-    subtitle: "복잡한 기획서? 필요 없어요.",
-    typeText: "학교 근처 맛집을 학생들끼리 공유하고 실시간 빈자리 확인하는 앱",
-    screenType: "input" as const, accent: "blue",
-  },
-  {
-    time: "0:12", label: "AI 기획서 생성", icon: "📋", emoji: "🤖",
-    title: "AI가 1초 만에 완벽한 기획서를 뽑아요",
-    subtitle: "기능, 화면, 시나리오까지 전부 자동",
-    typeText: "핵심 기능 4개, 화면 구조 4개, 사용자 시나리오 5개를 자동으로 설계했어요!",
-    screenType: "plan" as const, accent: "violet",
-  },
-  {
-    time: "0:28", label: "치트키 복사", icon: "✨", emoji: "📋",
-    title: "복사 → 붙여넣기 → 코드 완성!",
-    subtitle: "코딩 지식 0으로도 가능합니다",
-    typeText: "v0.dev, Cursor, Supabase 전용 프롬프트가 자동 생성됩니다",
-    screenType: "cheat" as const, accent: "emerald",
-  },
-  {
-    time: "0:42", label: "배포 완료!", icon: "🚀", emoji: "🎉",
-    title: "전 세계 누구나 접속 가능!",
-    subtitle: "총 비용 0원으로 내 서비스 탄생",
-    typeText: "my-vibe-app.vercel.app",
-    screenType: "deploy" as const, accent: "amber",
-  },
+// ── 스토리 장면 데이터 ──
+const STORY_SCENES = [
+  { type: "story-intro" as const, duration: 4000, label: "시작" },
+  { type: "zoom-in" as const, duration: 1500, label: "접속" },
+  { type: "step" as const, duration: 3000, label: "아이디어", step: { num: 1, icon: "💡", title: "아이디어 입력", typeText: "학교 근처 맛집 공유 + 빈자리 확인 앱", accent: "blue" } },
+  { type: "step" as const, duration: 3000, label: "기획서", step: { num: 2, icon: "📋", title: "AI 기획서 생성", typeText: "기능 4개, 화면 4개, 시나리오 5개 자동 완성!", accent: "violet" } },
+  { type: "step" as const, duration: 3000, label: "치트키", step: { num: 3, icon: "✨", title: "복사 → 붙여넣기", typeText: "v0 · Cursor · Supabase 프롬프트 복사 완료", accent: "emerald" } },
+  { type: "step" as const, duration: 3000, label: "배포!", step: { num: 4, icon: "🚀", title: "전세계 배포 완료!", typeText: "my-app.vercel.app · 비용 0원", accent: "amber" } },
+  { type: "zoom-out" as const, duration: 1500, label: "완성" },
+  { type: "story-outro" as const, duration: 4000, label: "끝!" },
 ];
+
+const TOTAL_STORY_DURATION = STORY_SCENES.reduce((sum, s) => sum + s.duration, 0);
 
 // ── 아이콘 ──
 function SunIcon() {
@@ -140,328 +106,358 @@ function FloatingParticles({ isDark }: { isDark: boolean }) {
   );
 }
 
-// ── 데모 모크 화면 ──
-function VideoScreen({ type, isDark, typedText, isActive }: { type: string; isDark: boolean; typedText: string; isActive: boolean }) {
-  const fadeClass = `transition-all duration-500 ${isActive ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-4 scale-95"}`;
-
-  if (type === "input") {
-    return (
-      <div className={`space-y-3 ${fadeClass}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-blue-400" : "bg-blue-500"}`} />
-          <span className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? "text-blue-400/60" : "text-blue-500/60"}`}>Step 1 · 아이디어 입력</span>
-        </div>
-        <div className="flex gap-1.5">
-          {["🌐 Web", "📱 iOS", "💻 Cross"].map((p, i) => (
-            <div key={p} className={`px-2 py-1 rounded-lg text-[9px] font-bold transition-all ${i === 0 ? isDark ? "bg-blue-500/30 text-blue-300 ring-1 ring-blue-500/50" : "bg-blue-100 text-blue-700 ring-1 ring-blue-300" : isDark ? "bg-white/5 text-white/20" : "bg-slate-50 text-slate-300"}`}>{p}</div>
-          ))}
-        </div>
-        <div className={`rounded-xl border-2 p-3 min-h-[60px] transition-all ${isDark ? "border-blue-500/40 bg-blue-500/5 shadow-lg shadow-blue-500/10" : "border-blue-300 bg-blue-50/50 shadow-md shadow-blue-100"}`}>
-          <p className={`text-[11px] leading-relaxed ${isDark ? "text-blue-200" : "text-blue-700"}`}>
-            {typedText}<span className={`inline-block w-0.5 h-3.5 ml-0.5 animate-pulse ${isDark ? "bg-blue-400" : "bg-blue-600"}`} />
-          </p>
-        </div>
-        <div className={`h-8 rounded-xl flex items-center justify-center text-[10px] font-bold text-white gap-1.5 ${isDark ? "bg-gradient-to-r from-blue-600 to-blue-500 shadow-lg shadow-blue-500/30" : "bg-blue-500 shadow-md shadow-blue-200"}`}>
-          <span className="animate-pulse">⚡</span> AI 설계도 뽑기 →
-        </div>
-      </div>
-    );
-  }
-
-  if (type === "plan") {
-    return (
-      <div className={`space-y-2 ${fadeClass}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-violet-400" : "bg-violet-500"}`} />
-          <span className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? "text-violet-400/60" : "text-violet-500/60"}`}>Step 2 · 기획서 생성 완료</span>
-        </div>
-        <div className={`p-2.5 rounded-xl border ${isDark ? "bg-violet-500/10 border-violet-500/20 shadow-lg shadow-violet-500/5" : "bg-violet-50 border-violet-200 shadow-md shadow-violet-100"}`}>
-          <div className={`text-[9px] font-bold ${isDark ? "text-violet-400" : "text-violet-600"}`}>😇 AI 멘토</div>
-          <div className={`text-[10px] mt-0.5 leading-relaxed ${isDark ? "text-white/60" : "text-slate-600"}`}>
-            {typedText}<span className={`inline-block w-0.5 h-3 ml-0.5 animate-pulse ${isDark ? "bg-violet-400" : "bg-violet-500"}`} />
-          </div>
-        </div>
-        {[
-          { icon: "🎯", label: "문제 정의" },
-          { icon: "⚙️", label: "핵심 기능 4개" },
-          { icon: "📱", label: "화면 구조 4개" },
-          { icon: "👤", label: "시나리오 5개" },
-        ].map((item, i) => (
-          <div key={i} className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[10px] ${isDark ? "bg-white/5" : "bg-slate-50"}`}>
-            <span className="flex items-center gap-1.5">{item.icon} {item.label}</span>
-            <span className={`font-bold flex items-center gap-1 ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> 완성
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (type === "cheat") {
-    return (
-      <div className={`space-y-2 ${fadeClass}`}>
-        <div className="flex items-center gap-2 mb-1">
-          <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-emerald-400" : "bg-emerald-500"}`} />
-          <span className={`text-[9px] font-bold uppercase tracking-wider ${isDark ? "text-emerald-400/60" : "text-emerald-500/60"}`}>Step 3 · 복사 치트키</span>
-        </div>
-        <div className={`text-[10px] leading-relaxed mb-1 ${isDark ? "text-white/40" : "text-slate-500"}`}>
-          {typedText}<span className={`inline-block w-0.5 h-3 ml-0.5 animate-pulse ${isDark ? "bg-emerald-400" : "bg-emerald-500"}`} />
-        </div>
-        {[
-          { label: "🎨 v0.dev 디자인", status: "복사됨 ✓", active: true },
-          { label: "💻 Cursor 코드", status: "복사 대기", active: false },
-          { label: "🗄️ Supabase SQL", status: "복사 대기", active: false },
-        ].map((item, i) => (
-          <div key={i} className={`flex items-center justify-between p-2 rounded-lg border transition-all ${item.active ? isDark ? "border-emerald-500/30 bg-emerald-500/10 shadow-md shadow-emerald-500/10" : "border-emerald-200 bg-emerald-50 shadow-sm" : isDark ? "border-white/5 bg-white/[0.02]" : "border-slate-100 bg-slate-50"}`}>
-            <span className={`text-[10px] font-bold ${item.active ? isDark ? "text-emerald-300" : "text-emerald-700" : isDark ? "text-white/30" : "text-slate-400"}`}>{item.label}</span>
-            <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${item.active ? isDark ? "bg-emerald-500/30 text-emerald-300" : "bg-emerald-100 text-emerald-700" : isDark ? "bg-white/5 text-white/20" : "bg-slate-100 text-slate-300"}`}>{item.status}</span>
-          </div>
-        ))}
-        <div className={`p-2 rounded-lg font-mono text-[8px] leading-relaxed ${isDark ? "bg-[#0d1117] text-emerald-400 border border-white/5" : "bg-slate-900 text-emerald-400"}`}>
-          <span className="text-slate-500">CREATE TABLE</span> restaurants (<br />
-          &nbsp;&nbsp;id <span className="text-blue-400">UUID</span> PRIMARY KEY,<br />
-          &nbsp;&nbsp;name <span className="text-blue-400">TEXT</span> NOT NULL<br />
-          );
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className={`flex flex-col items-center justify-center gap-2.5 py-3 ${fadeClass}`}>
-      <div className="relative">
-        <div className="text-4xl animate-bounce">🎉</div>
-        <div className={`absolute -inset-4 rounded-full animate-ping opacity-20 ${isDark ? "bg-amber-500" : "bg-amber-400"}`} />
-      </div>
-      <div className={`text-sm font-black ${isDark ? "text-white" : "text-slate-900"}`}>배포 성공!</div>
-      <div className={`text-[10px] ${isDark ? "text-white/40" : "text-slate-400"}`}>전 세계 누구나 접속 가능</div>
-      <div className={`font-mono text-[10px] px-3 py-1.5 rounded-lg font-bold ${isDark ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-lg shadow-emerald-500/10" : "bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-md shadow-emerald-100"}`}>
-        🌐 {typedText}<span className={`inline-block w-0.5 h-3 ml-0.5 animate-pulse ${isDark ? "bg-emerald-400" : "bg-emerald-500"}`} />
-      </div>
-      <div className={`text-[10px] font-bold ${isDark ? "text-amber-400" : "text-amber-600"}`}>💰 총 비용: 0원</div>
-      <div className="flex gap-1.5 mt-1">
-        {["✓ Vercel", "✓ Supabase", "✓ GitHub"].map((t) => (
-          <span key={t} className={`text-[8px] px-2 py-0.5 rounded-full font-bold ${isDark ? "bg-white/10 text-white/40" : "bg-slate-100 text-slate-500"}`}>{t}</span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── 가짜 영상 플레이어 ──
-function FakeVideoPlayer({ isDark }: { isDark: boolean }) {
+// ── 스토리텔링 데모 플레이어 ──
+function StoryVideoPlayer({ isDark }: { isDark: boolean }) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [progress, setProgress] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
   const [hasStarted, setHasStarted] = useState(false);
-  const progressRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
-  const STEP_DURATION = 8000;
-  const TOTAL_DURATION = STEP_DURATION * VIDEO_STEPS.length;
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }, []);
 
-  const currentStepData = VIDEO_STEPS[currentStep];
-  const typedText = useTypewriter(currentStepData.typeText, isPlaying && hasStarted, 30);
-
-  const stopAll = useCallback(() => {
-    if (progressRef.current) clearInterval(progressRef.current);
+  const getCurrentScene = useCallback((ms: number) => {
+    let acc = 0;
+    for (let i = 0; i < STORY_SCENES.length; i++) {
+      acc += STORY_SCENES[i].duration;
+      if (ms < acc) {
+        const sceneStart = acc - STORY_SCENES[i].duration;
+        const sceneProgress = (ms - sceneStart) / STORY_SCENES[i].duration;
+        return { index: i, scene: STORY_SCENES[i], progress: sceneProgress };
+      }
+    }
+    const last = STORY_SCENES.length - 1;
+    return { index: last, scene: STORY_SCENES[last], progress: 1 };
   }, []);
 
   const handlePlay = useCallback(() => {
-    if (isPlaying) { setIsPlaying(false); stopAll(); return; }
+    if (isPlaying) { setIsPlaying(false); stopTimer(); return; }
+    let current = elapsed >= TOTAL_STORY_DURATION ? 0 : elapsed;
+    if (current === 0) setElapsed(0);
     setIsPlaying(true);
     setHasStarted(true);
-    let elapsed = (progress / 100) * TOTAL_DURATION;
-    if (elapsed >= TOTAL_DURATION) { elapsed = 0; setProgress(0); setCurrentStep(0); }
-    progressRef.current = setInterval(() => {
-      elapsed += 100;
-      const newProgress = Math.min((elapsed / TOTAL_DURATION) * 100, 100);
-      setProgress(newProgress);
-      setCurrentStep(Math.min(Math.floor(elapsed / STEP_DURATION), VIDEO_STEPS.length - 1));
-      if (elapsed >= TOTAL_DURATION) { setIsPlaying(false); setProgress(100); clearInterval(progressRef.current!); }
-    }, 100);
-  }, [isPlaying, progress, TOTAL_DURATION, STEP_DURATION, stopAll]);
+    timerRef.current = setInterval(() => {
+      current += 80;
+      if (current >= TOTAL_STORY_DURATION) {
+        setElapsed(TOTAL_STORY_DURATION);
+        setIsPlaying(false);
+        stopTimer();
+      } else {
+        setElapsed(current);
+      }
+    }, 80);
+  }, [isPlaying, elapsed, stopTimer]);
 
-  useEffect(() => () => stopAll(), [stopAll]);
+  const handleRestart = useCallback(() => {
+    stopTimer(); setElapsed(0); setIsPlaying(false);
+  }, [stopTimer]);
 
-  const handleStepClick = (idx: number) => {
-    stopAll(); setCurrentStep(idx);
-    setProgress((idx / VIDEO_STEPS.length) * 100);
-    setIsPlaying(false); setHasStarted(true);
-  };
-
-  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = (e.clientX - rect.left) / rect.width;
-    const newProgress = Math.max(0, Math.min(100, ratio * 100));
-    stopAll(); setProgress(newProgress);
-    setCurrentStep(Math.min(Math.floor((newProgress / 100) * VIDEO_STEPS.length), VIDEO_STEPS.length - 1));
-    setIsPlaying(false); setHasStarted(true);
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    stopTimer();
+    setElapsed(Math.floor(ratio * TOTAL_STORY_DURATION));
+    setIsPlaying(false);
+    setHasStarted(true);
+  }, [stopTimer]);
+
+  useEffect(() => () => stopTimer(), [stopTimer]);
+
+  const { index: sceneIndex, scene: currentScene, progress: sceneProgress } = getCurrentScene(elapsed);
+  const overallProgress = (elapsed / TOTAL_STORY_DURATION) * 100;
+  const currentTime = `0:${String(Math.floor((elapsed / TOTAL_STORY_DURATION) * 23)).padStart(2, "0")}`;
+
+  const getTypedText = (fullText: string, progress: number) => {
+    const chars = Math.floor(fullText.length * Math.min(progress * 2, 1));
+    return fullText.slice(0, chars);
   };
 
-  const currentTime = `0:${String(Math.floor((progress / 100) * 42)).padStart(2, "0")}`;
-
-  const accentColors: Record<string, { bg: string; text: string; ring: string; glow: string; grad: string }> = {
-    blue: { bg: "bg-blue-500", text: "text-blue-400", ring: "ring-blue-500/50", glow: "shadow-blue-500/20", grad: "from-blue-600 to-blue-500" },
-    violet: { bg: "bg-violet-500", text: "text-violet-400", ring: "ring-violet-500/50", glow: "shadow-violet-500/20", grad: "from-violet-600 to-violet-500" },
-    emerald: { bg: "bg-emerald-500", text: "text-emerald-400", ring: "ring-emerald-500/50", glow: "shadow-emerald-500/20", grad: "from-emerald-600 to-emerald-500" },
-    amber: { bg: "bg-amber-500", text: "text-amber-400", ring: "ring-amber-500/50", glow: "shadow-amber-500/20", grad: "from-amber-600 to-amber-500" },
+  const getSceneStartPercent = (idx: number) => {
+    let acc = 0;
+    for (let i = 0; i < idx; i++) acc += STORY_SCENES[i].duration;
+    return (acc / TOTAL_STORY_DURATION) * 100;
   };
-  const ac = accentColors[currentStepData.accent] || accentColors.blue;
+
+  const accentMap: Record<string, { darkBg: string; darkBorder: string; darkText: string; lightBg: string; lightBorder: string; lightText: string; cursor: string }> = {
+    blue: { darkBg: "bg-blue-500/10", darkBorder: "border-blue-500/30", darkText: "text-blue-400", lightBg: "bg-blue-50", lightBorder: "border-blue-200", lightText: "text-blue-600", cursor: "bg-blue-500" },
+    violet: { darkBg: "bg-violet-500/10", darkBorder: "border-violet-500/30", darkText: "text-violet-400", lightBg: "bg-violet-50", lightBorder: "border-violet-200", lightText: "text-violet-600", cursor: "bg-violet-500" },
+    emerald: { darkBg: "bg-emerald-500/10", darkBorder: "border-emerald-500/30", darkText: "text-emerald-400", lightBg: "bg-emerald-50", lightBorder: "border-emerald-200", lightText: "text-emerald-600", cursor: "bg-emerald-500" },
+    amber: { darkBg: "bg-amber-500/10", darkBorder: "border-amber-500/30", darkText: "text-amber-400", lightBg: "bg-amber-50", lightBorder: "border-amber-200", lightText: "text-amber-600", cursor: "bg-amber-500" },
+  };
+
+  // ── 장면 렌더링 ──
+  const renderScene = () => {
+
+    // 오프닝
+    if (currentScene.type === "story-intro") {
+      const fadeIn = Math.min(sceneProgress * 3, 1);
+      const textDelay = Math.max(0, (sceneProgress - 0.3) * 2);
+      const bubbleDelay = Math.max(0, (sceneProgress - 0.5) * 3);
+      const cta = Math.max(0, (sceneProgress - 0.75) * 4);
+      return (
+        <div className="flex items-center justify-center h-full" style={{ opacity: fadeIn }}>
+          <div className="text-center space-y-4 px-6">
+            <div className="flex items-end justify-center gap-4 mb-2">
+              {[
+                { emoji: "😰", label: "경영학과", delay: "0s" },
+                { emoji: "🤔", label: "디자인과", delay: "0.3s", big: true },
+                { emoji: "😩", label: "창업동아리", delay: "0.6s" },
+              ].map((c, i) => (
+                <div key={i} className="flex flex-col items-center" style={{ transform: `translateY(${(1 - fadeIn) * 24}px)`, transition: "transform 0.5s" }}>
+                  <div className={`animate-bounce ${c.big ? "text-5xl md:text-6xl" : "text-4xl md:text-5xl"} mb-1`} style={{ animationDelay: c.delay, animationDuration: "2s" }}>{c.emoji}</div>
+                  <div className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? "bg-white/10 text-white/40" : "bg-slate-100 text-slate-400"}`}>{c.label}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ opacity: Math.min(textDelay, 1) }}>
+              <p className={`text-sm md:text-base font-bold ${isDark ? "text-white/80" : "text-slate-700"}`}>"아이디어는 있는데..."</p>
+              <p className={`text-xs md:text-sm mt-1 ${isDark ? "text-white/40" : "text-slate-400"}`}>"코딩을 몰라서 만들 수가 없어 😢"</p>
+            </div>
+            <div className="flex justify-center gap-2 flex-wrap" style={{ opacity: Math.min(bubbleDelay, 1) }}>
+              {["외주 300만원?!", "6개월 공부?", "포기할까..."].map((text, i) => (
+                <span key={i} className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${isDark ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-red-50 text-red-500 border border-red-200"}`}>{text}</span>
+              ))}
+            </div>
+            <div style={{ opacity: Math.min(cta, 1) }}>
+              <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold ${isDark ? "bg-blue-500/20 text-blue-400 border border-blue-500/30" : "bg-blue-50 text-blue-600 border border-blue-200"}`}>
+                <span className="text-base">💻</span>잠깐, 이런 게 있다면...?
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 줌인
+    if (currentScene.type === "zoom-in") {
+      const scale = 0.2 + sceneProgress * 0.8;
+      const br = 28 * (1 - sceneProgress);
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className={`overflow-hidden border transition-all ${isDark ? "bg-[#0a0a16] border-white/10" : "bg-white border-slate-200 shadow-xl"}`}
+            style={{ transform: `scale(${scale})`, borderRadius: `${br}px`, opacity: 0.4 + sceneProgress * 0.6, width: "280px" }}>
+            <div className={`flex items-center gap-1.5 px-3 py-2 border-b ${isDark ? "border-white/10" : "border-slate-100"}`}>
+              <div className="h-2 w-2 rounded-full bg-red-400" /><div className="h-2 w-2 rounded-full bg-yellow-400" /><div className="h-2 w-2 rounded-full bg-green-400" />
+              <span className={`text-[8px] ml-1 font-bold ${isDark ? "text-white/20" : "text-slate-300"}`}>VIBE PROJECT</span>
+            </div>
+            <div className="p-6 text-center">
+              <div className="text-3xl mb-2">🚀</div>
+              <div className={`text-sm font-black ${isDark ? "text-white/60" : "text-slate-600"}`}>VIBE 바이브코딩</div>
+              <div className={`text-[9px] mt-1 ${isDark ? "text-white/30" : "text-slate-400"}`}>접속 중...</div>
+              <div className={`mt-3 h-1.5 rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-slate-100"}`}>
+                <div className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full transition-all" style={{ width: `${sceneProgress * 100}%` }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 스텝
+    if (currentScene.type === "step" && currentScene.step) {
+      const step = currentScene.step;
+      const ac = accentMap[step.accent] || accentMap.blue;
+      const typed = getTypedText(step.typeText, sceneProgress);
+      const enterAnim = Math.min(sceneProgress * 5, 1);
+      return (
+        <div className="flex items-center justify-center h-full px-6"
+          style={{ opacity: enterAnim, transform: `translateY(${(1 - enterAnim) * 16}px)` }}>
+          <div className="w-full max-w-md space-y-3">
+            {/* 헤더 */}
+            <div className="flex items-center gap-3">
+              <div className={`h-11 w-11 rounded-xl flex items-center justify-center text-xl border ${isDark ? `${ac.darkBg} ${ac.darkBorder}` : `${ac.lightBg} ${ac.lightBorder}`}`}>
+                {step.icon}
+              </div>
+              <div>
+                <div className={`text-[10px] font-bold ${isDark ? ac.darkText : ac.lightText}`}>Step {step.num} / 4</div>
+                <div className={`text-sm font-black ${isDark ? "text-white" : "text-slate-900"}`}>{step.title}</div>
+              </div>
+            </div>
+            {/* 타이핑 */}
+            <div className={`p-3.5 rounded-xl border ${isDark ? `${ac.darkBg} ${ac.darkBorder}` : `${ac.lightBg} ${ac.lightBorder}`}`}>
+              <p className={`text-xs leading-relaxed font-medium ${isDark ? "text-white/70" : "text-slate-700"}`}>
+                {typed}<span className={`inline-block w-0.5 h-3.5 ml-0.5 animate-pulse ${ac.cursor}`} />
+              </p>
+            </div>
+            {/* 스텝 인디케이터 */}
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4].map((n) => (
+                <div key={n} className={`h-6 w-6 rounded-full flex items-center justify-center text-[9px] font-bold transition-all duration-300 ${
+                  n < step.num
+                    ? isDark ? "bg-emerald-500/30 text-emerald-300 border border-emerald-500/40" : "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                    : n === step.num
+                    ? isDark ? `${ac.darkBg} ${ac.darkText} border ${ac.darkBorder}` : `${ac.lightBg} ${ac.lightText} border ${ac.lightBorder}`
+                    : isDark ? "bg-white/5 text-white/20 border border-white/10" : "bg-slate-100 text-slate-300"
+                }`}>
+                  {n < step.num ? "✓" : n}
+                </div>
+              ))}
+            </div>
+            {/* 빠른감기 느낌 속도 표시 */}
+            <div className="flex justify-center">
+              <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold ${isDark ? "bg-white/5 text-white/20" : "bg-slate-100 text-slate-400"}`}>⚡ 빠른감기 진행 중</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // 줌아웃 → 휴대폰
+    if (currentScene.type === "zoom-out") {
+      const shrink = 1 - sceneProgress * 0.65;
+      const phoneAppear = Math.max(0, (sceneProgress - 0.4) * 2);
+      const handAppear = Math.max(0, (sceneProgress - 0.6) * 3);
+      return (
+        <div className="flex items-center justify-center h-full">
+          <div className="relative flex flex-col items-center">
+            <div className={`overflow-hidden border transition-all ${isDark ? "bg-[#0a0a16] border-white/10" : "bg-white border-slate-200 shadow-xl"}`}
+              style={{ transform: `scale(${shrink})`, borderRadius: `${16 + sceneProgress * 20}px`, width: "200px" }}>
+              <div className="p-4 text-center">
+                <div className={`text-xs font-black ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>✓ 배포 완료!</div>
+                <div className={`text-[8px] mt-1 ${isDark ? "text-white/30" : "text-slate-400"}`}>my-app.vercel.app</div>
+                <div className={`text-[8px] font-bold mt-1 ${isDark ? "text-amber-400" : "text-amber-600"}`}>💰 0원</div>
+              </div>
+            </div>
+            <div className="absolute inset-0 flex flex-col items-center justify-center" style={{ opacity: phoneAppear }}>
+              <div className="text-6xl">📱</div>
+            </div>
+            <div className="mt-4 text-2xl" style={{ opacity: Math.min(handAppear, 1) }}>👇</div>
+          </div>
+        </div>
+      );
+    }
+
+    // 엔딩 하이파이브
+    if (currentScene.type === "story-outro") {
+      const fadeIn = Math.min(sceneProgress * 2, 1);
+      const bounce = Math.sin(sceneProgress * Math.PI * 4) * 6;
+      const confettiOpacity = Math.max(0, (sceneProgress - 0.15) * 2);
+      const badgeOpacity = Math.max(0, (sceneProgress - 0.4) * 2.5);
+      return (
+        <div className="flex items-center justify-center h-full relative overflow-hidden" style={{ opacity: fadeIn }}>
+          {/* 컨페티 */}
+          <div className="absolute inset-0 pointer-events-none" style={{ opacity: confettiOpacity }}>
+            {Array.from({ length: 24 }, (_, i) => (
+              <div key={i} className="absolute animate-bounce text-sm"
+                style={{ left: `${5 + (i * 19) % 90}%`, top: `${5 + (i * 27) % 65}%`, animationDelay: `${(i * 0.1) % 0.8}s`, animationDuration: `${0.7 + (i % 3) * 0.25}s` }}>
+                {["🎉", "✨", "🎊", "⭐", "💫", "🌟"][i % 6]}
+              </div>
+            ))}
+          </div>
+          <div className="text-center space-y-3 relative z-10 px-4">
+            <div className="flex items-end justify-center gap-3">
+              <div style={{ transform: `translateY(${bounce}px) rotate(-12deg)` }}><div className="text-4xl md:text-5xl">🙌</div></div>
+              <div style={{ transform: `translateY(${-bounce * 1.2}px)` }}><div className="text-5xl md:text-6xl">🎉</div></div>
+              <div style={{ transform: `translateY(${bounce}px) rotate(12deg)` }}><div className="text-4xl md:text-5xl">🙌</div></div>
+            </div>
+            <div>
+              <p className={`text-base md:text-lg font-black ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "text-blue-600"}`}>
+                우리가 만들었어! 🥹
+              </p>
+              <p className={`text-xs mt-1 ${isDark ? "text-white/40" : "text-slate-400"}`}>
+                코딩 0줄, 비용 0원, 단 하루 만에
+              </p>
+            </div>
+            <div className="flex justify-center gap-2 flex-wrap" style={{ opacity: Math.min(badgeOpacity, 1) }}>
+              {[
+                { emoji: "⚡", text: "하루 완성" },
+                { emoji: "💰", text: "무료" },
+                { emoji: "🌍", text: "전세계 배포" },
+              ].map((badge, i) => (
+                <span key={i} className={`text-[10px] px-2.5 py-1 rounded-full font-bold ${isDark ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border border-emerald-200"}`}>
+                  {badge.emoji} {badge.text}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
-    <div className={`w-full max-w-4xl mx-auto overflow-hidden transition-all duration-500 ${
-      isDark
-        ? "rounded-2xl border border-white/10 bg-gradient-to-b from-[#12122a] to-[#0a0a1a] shadow-2xl shadow-black/60"
-        : "rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-200/80"
-    }`}>
+    <div className={`w-full max-w-4xl mx-auto overflow-hidden ${isDark ? "rounded-2xl border border-white/10 bg-gradient-to-b from-[#12122a] to-[#0a0a1a] shadow-2xl shadow-black/60" : "rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-200/80"}`}>
 
       {/* 타이틀바 */}
       <div className={`flex items-center gap-3 px-5 py-3 border-b ${isDark ? "border-white/10 bg-white/[0.03]" : "border-slate-100 bg-slate-50"}`}>
         <div className="flex gap-1.5">
-          <div className="h-3 w-3 rounded-full bg-[#ff5f57] shadow-sm shadow-red-500/30" />
-          <div className="h-3 w-3 rounded-full bg-[#febc2e] shadow-sm shadow-yellow-500/30" />
-          <div className="h-3 w-3 rounded-full bg-[#28c840] shadow-sm shadow-green-500/30" />
+          <div className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+          <div className="h-3 w-3 rounded-full bg-[#febc2e]" />
+          <div className="h-3 w-3 rounded-full bg-[#28c840]" />
         </div>
-        <div className={`flex-1 text-center text-[10px] font-semibold tracking-wider ${isDark ? "text-white/20" : "text-slate-300"}`}>
-          VIBE PROJECT — 워크스페이스 데모
-        </div>
+        <div className={`flex-1 text-center text-[10px] font-semibold tracking-wider ${isDark ? "text-white/20" : "text-slate-300"}`}>VIBE PROJECT — 하루 만에 앱 만드는 23초 스토리</div>
         <div className="flex items-center gap-1.5">
-          <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-emerald-400" : "bg-emerald-500"}`} />
-          <span className={`text-[9px] font-bold ${isDark ? "text-emerald-400/60" : "text-emerald-600/60"}`}>LIVE</span>
+          <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-red-400" : "bg-red-500"}`} />
+          <span className={`text-[9px] font-bold ${isDark ? "text-red-400/60" : "text-red-500/60"}`}>REC</span>
         </div>
       </div>
 
-      {/* 타임라인 스텝 바 */}
-      <div className={`flex border-b relative ${isDark ? "border-white/10" : "border-slate-100"}`}>
-        <div className={`absolute top-1/2 left-0 right-0 h-px -translate-y-1/2 ${isDark ? "bg-white/5" : "bg-slate-100"}`} />
-        <div className={`absolute top-1/2 left-0 h-px -translate-y-1/2 transition-all duration-500 ${isDark ? `bg-gradient-to-r ${ac.grad}` : "bg-blue-500"}`}
-          style={{ width: `${((currentStep + 1) / VIDEO_STEPS.length) * 100}%` }} />
-        {VIDEO_STEPS.map((step, i) => {
-          const isCurrentOrPast = i <= currentStep;
-          const isCurrent = i === currentStep;
-          return (
-            <button key={i} type="button" onClick={() => handleStepClick(i)}
-              className={`flex-1 relative z-10 px-2 py-3 flex flex-col items-center gap-1.5 transition-all duration-300 ${isCurrent ? "scale-105" : "hover:scale-102"}`}>
-              <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-500 ${
-                isCurrent
-                  ? `${ac.bg} text-white shadow-lg ${ac.glow} ring-2 ${ac.ring}`
-                  : isCurrentOrPast
-                  ? isDark ? "bg-white/20 text-white" : "bg-slate-900 text-white"
-                  : isDark ? "bg-white/5 text-white/20" : "bg-slate-100 text-slate-300"
-              }`}>
-                {isCurrentOrPast && !isCurrent ? "✓" : step.icon}
-              </div>
-              <span className={`text-[9px] font-bold transition-all ${
-                isCurrent ? isDark ? ac.text : "text-slate-900" : isDark ? "text-white/20" : "text-slate-300"
-              }`}>{step.label}</span>
+      {/* 메인 영상 영역 */}
+      <div className={`relative min-h-[300px] md:min-h-[340px] ${isDark ? "bg-[#0a0a16]" : "bg-gradient-to-b from-slate-50 to-white"}`}>
+        {!hasStarted ? (
+          <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-5 px-6">
+            <button type="button" onClick={handlePlay}
+              className={`group relative w-24 h-24 rounded-full flex items-center justify-center transition-all hover:scale-110 ${isDark ? "bg-gradient-to-br from-blue-600 to-violet-600 shadow-2xl shadow-violet-500/30" : "bg-gradient-to-br from-blue-500 to-blue-600 shadow-2xl shadow-blue-300"}`}>
+              <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping" />
+              <svg viewBox="0 0 24 24" className="w-10 h-10 ml-1 text-white fill-current"><path d="M8 5v14l11-7z" /></svg>
             </button>
-          );
-        })}
+            <div className="text-center">
+              <p className={`text-sm font-bold ${isDark ? "text-white/70" : "text-slate-700"}`}>비전공자의 하루를 23초로 압축했어요</p>
+              <p className={`text-xs mt-1 ${isDark ? "text-white/30" : "text-slate-400"}`}>▶ 재생 버튼을 눌러 스토리를 시작해보세요</p>
+            </div>
+          </div>
+        ) : (
+          <div className="min-h-[300px] md:min-h-[340px] flex items-center justify-center">
+            {renderScene()}
+          </div>
+        )}
       </div>
 
-      {/* 메인 콘텐츠 */}
-      <div className="grid md:grid-cols-2 min-h-[280px]">
-        {/* 좌: 설명 */}
-        <div className={`p-6 md:p-8 border-r flex flex-col justify-center ${isDark ? "border-white/10" : "border-slate-100"}`}>
-          {!hasStarted ? (
-            <div className="flex flex-col items-center justify-center text-center gap-5 py-4">
-              <button type="button" onClick={handlePlay}
-                className={`group relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 ${
-                  isDark
-                    ? "bg-gradient-to-br from-blue-600 to-violet-600 shadow-2xl shadow-violet-500/30 hover:shadow-violet-500/50"
-                    : "bg-gradient-to-br from-blue-500 to-blue-600 shadow-2xl shadow-blue-300 hover:shadow-blue-400"
-                }`}>
-                <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping" />
-                <svg viewBox="0 0 24 24" className="w-10 h-10 ml-1 text-white fill-current"><path d="M8 5v14l11-7z" /></svg>
-              </button>
-              <div>
-                <p className={`text-sm font-bold ${isDark ? "text-white/70" : "text-slate-700"}`}>데모를 재생해보세요</p>
-                <p className={`text-xs mt-1 ${isDark ? "text-white/30" : "text-slate-400"}`}>아이디어 → 기획서 → 복사 → 배포까지 42초</p>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4 transition-all duration-500">
-              <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold ${
-                isDark ? `bg-white/5 ${ac.text}` : "bg-blue-100 text-blue-600"
-              }`}>
-                <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${ac.bg}`} />
-                Step {currentStep + 1} of {VIDEO_STEPS.length}
-              </div>
-              <h3 className={`text-lg font-black leading-snug ${isDark ? "text-white" : "text-slate-900"}`}>
-                {currentStepData.title}
-              </h3>
-              <p className={`text-xs ${isDark ? "text-white/40" : "text-slate-500"}`}>
-                {currentStepData.subtitle}
-              </p>
-              <div className="text-5xl py-1">{currentStepData.emoji}</div>
-              <div className={`text-[10px] flex items-center gap-2 ${isDark ? "text-white/20" : "text-slate-300"}`}>
-                <span>💡</span>
-                <span>각 단계를 클릭하면 해당 화면으로 이동합니다</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* 우: 모크 화면 */}
-        <div className={`p-5 flex items-center ${isDark ? "bg-white/[0.015]" : "bg-slate-50/80"}`}>
-          {!hasStarted ? (
-            <div
-              className={`w-full h-full min-h-[220px] rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-all hover:scale-[1.02] ${isDark ? "border-white/10 hover:border-white/20" : "border-slate-200 hover:border-slate-300"}`}
-              onClick={handlePlay}>
-              <div className="text-center">
-                <div className="text-3xl mb-2 opacity-30">🖥️</div>
-                <p className={`text-[10px] ${isDark ? "text-white/15" : "text-slate-300"}`}>▶ 클릭하여 시작</p>
-              </div>
-            </div>
-          ) : (
-            <div className={`w-full rounded-xl border p-4 min-h-[220px] transition-all duration-300 ${
-              isDark ? `border-white/10 bg-white/[0.03] shadow-xl ${ac.glow}` : "border-slate-200 bg-white shadow-lg shadow-slate-100"
-            }`}>
-              <div className={`flex items-center gap-1.5 mb-3 pb-2 border-b ${isDark ? "border-white/5" : "border-slate-100"}`}>
-                <div className="h-1.5 w-1.5 rounded-full bg-red-400/60" />
-                <div className="h-1.5 w-1.5 rounded-full bg-yellow-400/60" />
-                <div className="h-1.5 w-1.5 rounded-full bg-green-400/60" />
-                <span className={`text-[8px] ml-1 ${isDark ? "text-white/15" : "text-slate-300"}`}>workspace</span>
-              </div>
-              <VideoScreen type={currentStepData.screenType} isDark={isDark} typedText={typedText} isActive={hasStarted} />
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 컨트롤 바 */}
+      {/* 타임라인 + 컨트롤 */}
       <div className={`px-5 pb-4 pt-3 border-t ${isDark ? "border-white/10 bg-white/[0.02]" : "border-slate-100 bg-slate-50/80"}`}>
+        {/* 장면 라벨 */}
+        <div className="flex mb-1.5">
+          {STORY_SCENES.map((scene, i) => {
+            const widthPct = (scene.duration / TOTAL_STORY_DURATION) * 100;
+            const isActive = i === sceneIndex;
+            const isPast = i < sceneIndex;
+            return (
+              <div key={i} className="text-center overflow-hidden" style={{ width: `${widthPct}%` }}>
+                <span className={`text-[8px] font-bold truncate block transition-all ${isActive ? isDark ? "text-blue-400" : "text-blue-600" : isPast ? isDark ? "text-white/30" : "text-slate-400" : isDark ? "text-white/10" : "text-slate-200"}`}>
+                  {scene.label}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
         {/* 프로그레스 바 */}
         <div className="flex items-center gap-3 mb-3">
           <span className={`text-[10px] font-mono font-bold w-7 shrink-0 ${isDark ? "text-white/30" : "text-slate-400"}`}>{currentTime}</span>
-          <div className={`flex-1 h-1.5 rounded-full cursor-pointer relative group transition-all hover:h-2.5 ${isDark ? "bg-white/10" : "bg-slate-200"}`}
-            onClick={handleProgressClick}>
-            <div className={`absolute inset-y-0 left-0 rounded-full transition-all ${isDark ? "bg-white/5" : "bg-slate-300/50"}`}
-              style={{ width: `${Math.min(progress + 15, 100)}%` }} />
-            <div className={`absolute inset-y-0 left-0 rounded-full transition-all duration-150 ${isDark ? `bg-gradient-to-r ${ac.grad}` : "bg-blue-500"}`}
-              style={{ width: `${progress}%` }} />
-            <div className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? `border-violet-500 shadow-violet-500/30` : "border-blue-500 shadow-blue-500/30"}`}
-              style={{ left: `calc(${progress}% - 7px)` }} />
+          <div className={`flex-1 h-1.5 rounded-full cursor-pointer relative group transition-all hover:h-2.5 ${isDark ? "bg-white/10" : "bg-slate-200"}`} onClick={handleProgressClick}>
+            {STORY_SCENES.map((_, i) => {
+              if (i === 0) return null;
+              const pos = getSceneStartPercent(i);
+              return <div key={i} className={`absolute top-0 bottom-0 w-px ${isDark ? "bg-white/10" : "bg-slate-300/40"}`} style={{ left: `${pos}%` }} />;
+            })}
+            <div className={`absolute inset-y-0 left-0 rounded-full transition-all duration-100 ${isDark ? "bg-gradient-to-r from-blue-500 via-violet-500 to-emerald-500" : "bg-gradient-to-r from-blue-500 to-violet-500"}`} style={{ width: `${overallProgress}%` }} />
+            <div className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? "border-violet-500" : "border-blue-500"}`} style={{ left: `calc(${overallProgress}% - 7px)` }} />
           </div>
-          <span className={`text-[10px] font-mono font-bold w-7 shrink-0 text-right ${isDark ? "text-white/30" : "text-slate-400"}`}>0:42</span>
+          <span className={`text-[10px] font-mono font-bold w-7 shrink-0 text-right ${isDark ? "text-white/30" : "text-slate-400"}`}>0:23</span>
         </div>
 
-        {/* 버튼들 */}
+        {/* 컨트롤 버튼 */}
         <div className="flex items-center gap-2">
           <button type="button" onClick={handlePlay}
-            className={`flex h-9 w-9 items-center justify-center rounded-full transition-all hover:scale-110 ${
-              isDark
-                ? `bg-gradient-to-br ${ac.grad} text-white shadow-lg ${ac.glow} hover:opacity-90`
-                : "bg-slate-900 text-white shadow-lg hover:bg-slate-700"
-            }`}>
+            className={`flex h-9 w-9 items-center justify-center rounded-full transition-all hover:scale-110 ${isDark ? "bg-gradient-to-br from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-500/20" : "bg-slate-900 text-white shadow-lg hover:bg-slate-700"}`}>
             {isPlaying
               ? <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" /></svg>
               : <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current ml-0.5"><path d="M8 5v14l11-7z" /></svg>
             }
           </button>
-
-          <button type="button" onClick={() => { stopAll(); setCurrentStep(0); setProgress(0); setIsPlaying(false); }}
+          <button type="button" onClick={handleRestart}
             className={`flex h-7 w-7 items-center justify-center rounded-full transition hover:scale-110 ${isDark ? "text-white/30 hover:text-white/70" : "text-slate-300 hover:text-slate-600"}`}>
             <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" /></svg>
           </button>
@@ -471,25 +467,20 @@ function FakeVideoPlayer({ isDark }: { isDark: boolean }) {
               <span className="flex items-center gap-1.5">
                 <span className="flex gap-0.5">
                   {[0, 1, 2].map((i) => (
-                    <span key={i} className={`inline-block h-2.5 w-0.5 rounded-full animate-bounce ${isDark ? ac.bg : "bg-blue-500"}`}
-                      style={{ animationDelay: `${i * 0.15}s` }} />
+                    <span key={i} className={`inline-block h-2.5 w-0.5 rounded-full animate-bounce ${isDark ? "bg-violet-400" : "bg-blue-500"}`} style={{ animationDelay: `${i * 0.15}s` }} />
                   ))}
                 </span>
                 재생 중
               </span>
-            ) : hasStarted ? "일시정지" : "데모 42초"}
+            ) : hasStarted ? (elapsed >= TOTAL_STORY_DURATION ? "재생 완료 ✓" : "일시정지") : "23초 스토리 데모"}
           </div>
 
           <div className="hidden sm:flex items-center gap-1.5">
             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? "bg-white/5 text-white/20" : "bg-slate-100 text-slate-400"}`}>HD</span>
-            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? "bg-white/5 text-white/20" : "bg-slate-100 text-slate-400"}`}>4 Steps</span>
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? "bg-white/5 text-white/20" : "bg-slate-100 text-slate-400"}`}>Story</span>
           </div>
 
-          <a href="/workspace" className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all hover:scale-105 ${
-            isDark
-              ? `bg-gradient-to-r ${ac.grad} text-white shadow-lg ${ac.glow} hover:opacity-90`
-              : "bg-blue-600 text-white shadow-md shadow-blue-200 hover:bg-blue-700"
-          }`}>
+          <a href="/workspace" className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all hover:scale-105 ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-500/20" : "bg-blue-600 text-white shadow-md shadow-blue-200 hover:bg-blue-700"}`}>
             직접 해보기 →
           </a>
         </div>
@@ -537,10 +528,10 @@ export default function Home() {
     <main id="top" className={`relative min-h-screen overflow-hidden antialiased transition-colors duration-500 ${isDark ? "bg-[#080812] text-white" : "bg-white text-slate-900"}`}>
 
       <style>{`
-        @keyframes fadeInUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
-        .anim-fiu { animation: fadeInUp 0.7s ease-out forwards; opacity:0; }
-        @keyframes float-p { 0%,100%{transform:translateY(0) translateX(0);opacity:0;} 10%{opacity:1;} 90%{opacity:1;} 50%{transform:translateY(-60px) translateX(20px);} }
-        .animate-float-particle { animation: float-p ease-in-out infinite; }
+        @keyframes fadeInUp { from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);} }
+        .anim-fiu{animation:fadeInUp 0.7s ease-out forwards;opacity:0;}
+        @keyframes float-p{0%,100%{transform:translateY(0) translateX(0);opacity:0;}10%{opacity:1;}90%{opacity:1;}50%{transform:translateY(-60px) translateX(20px);}}
+        .animate-float-particle{animation:float-p ease-in-out infinite;}
       `}</style>
 
       {isDark && (
@@ -558,16 +549,8 @@ export default function Home() {
             VIBE PROJECT
           </a>
           <div className="hidden items-center gap-6 md:flex">
-            {[
-              { href: "/learn", label: "학습하기" },
-              { href: "#demo", label: "데모 보기" },
-              { href: "#features", label: "학습 기능" },
-              { href: "#how", label: "사용 방법" },
-              { href: "#faq", label: "FAQ" },
-            ].map((link) => (
-              <a key={link.href} href={link.href} className={`text-sm font-medium transition ${isDark ? "text-white/60 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}>
-                {link.label}
-              </a>
+            {[{ href: "/learn", label: "학습하기" }, { href: "#demo", label: "데모 보기" }, { href: "#features", label: "학습 기능" }, { href: "#how", label: "사용 방법" }, { href: "#faq", label: "FAQ" }].map((link) => (
+              <a key={link.href} href={link.href} className={`text-sm font-medium transition ${isDark ? "text-white/60 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}>{link.label}</a>
             ))}
           </div>
           <div className="flex items-center gap-3">
@@ -575,9 +558,7 @@ export default function Home() {
               <button type="button" onClick={() => handleThemeChange("light")} className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${!isDark ? "bg-white text-blue-600 shadow-sm" : "text-white/40 hover:bg-white/10"}`}><SunIcon /></button>
               <button type="button" onClick={() => handleThemeChange("dark")} className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${isDark ? "bg-white/10 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}><MoonIcon /></button>
             </div>
-            <a href="/workspace" className={`hidden rounded-lg px-4 py-1.5 text-xs font-bold tracking-wide transition md:block lg:px-5 lg:py-2.5 ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-900/40 hover:opacity-90" : "bg-blue-600 text-white shadow-lg shadow-blue-200 hover:bg-blue-700"}`}>
-              START
-            </a>
+            <a href="/workspace" className={`hidden rounded-lg px-4 py-1.5 text-xs font-bold tracking-wide transition md:block lg:px-5 lg:py-2.5 ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-900/40 hover:opacity-90" : "bg-blue-600 text-white shadow-lg shadow-blue-200 hover:bg-blue-700"}`}>START</a>
           </div>
         </div>
       </nav>
@@ -593,29 +574,22 @@ export default function Home() {
             <div className="absolute right-0 top-24 -z-10 h-72 w-72 rounded-full bg-violet-200/30 blur-3xl" />
           </>
         )}
-
         <div className="anim-fiu" style={{ animationDelay: "0s" }}>
           <div className={`mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold tracking-wide ${isDark ? "border-white/10 bg-white/5 text-white/60 backdrop-blur" : "border-slate-200 bg-white text-slate-600 shadow-sm"}`}>
             <span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-blue-400" : "bg-blue-500"}`} />
             비전공자를 위한 실전 바이브 코딩 가이드
           </div>
         </div>
-
         <h1 className="mx-auto max-w-5xl text-4xl font-extrabold leading-[1.1] tracking-tight md:text-7xl anim-fiu" style={{ animationDelay: "0.1s" }}>
           오늘 떠오른 아이디어,<br />
-          <span className={isDark ? "bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent" : "text-blue-600"}>
-            오늘 안에 완성하세요.
-          </span>
+          <span className={isDark ? "bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent" : "text-blue-600"}>오늘 안에 완성하세요.</span>
         </h1>
-
         <p className={`mx-auto mt-6 max-w-2xl text-xl font-medium md:text-2xl anim-fiu ${isDark ? "text-white/55" : "text-slate-500"}`} style={{ animationDelay: "0.2s" }}>
           비전공자도, 1일 만에, 진짜 프로토타입.
         </p>
         <p className={`mx-auto mt-3 max-w-2xl text-base leading-relaxed anim-fiu ${isDark ? "text-white/35" : "text-slate-400"}`} style={{ animationDelay: "0.3s" }}>
-          AI와 대화하며 개발하는 바이브 코딩을 가장 쉽게 배웁니다.<br className="hidden md:block" />
-          당신의 첫 웹앱, 여기서 시작하세요.
+          AI와 대화하며 개발하는 바이브 코딩을 가장 쉽게 배웁니다.<br className="hidden md:block" />당신의 첫 웹앱, 여기서 시작하세요.
         </p>
-
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row anim-fiu" style={{ animationDelay: "0.4s" }}>
           <a href="/workspace" className={`group rounded-full px-8 py-3 text-sm font-bold uppercase tracking-wide transition sm:text-base hover:scale-[1.02] ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-xl hover:opacity-90" : "bg-blue-600 text-white shadow-xl hover:bg-blue-700"}`}>
             바이브 코딩 시작하기 <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
@@ -628,9 +602,7 @@ export default function Home() {
         {/* 채팅 미리보기 */}
         <div className={`mx-auto mt-20 max-w-2xl overflow-hidden rounded-[2rem] text-left anim-fiu ${isDark ? "border border-white/10 bg-white/5 shadow-2xl shadow-black/50 backdrop-blur-xl" : "border border-slate-200 bg-white shadow-2xl shadow-slate-200"}`} style={{ animationDelay: "0.5s" }}>
           <div className={`flex items-center gap-2 border-b px-5 py-3 ${isDark ? "border-white/10" : "border-slate-100 bg-slate-50"}`}>
-            <div className="h-2.5 w-2.5 rounded-full bg-red-400" />
-            <div className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
-            <div className="h-2.5 w-2.5 rounded-full bg-green-400" />
+            <div className="h-2.5 w-2.5 rounded-full bg-red-400" /><div className="h-2.5 w-2.5 rounded-full bg-yellow-400" /><div className="h-2.5 w-2.5 rounded-full bg-green-400" />
             <span className={`ml-2 text-xs font-semibold uppercase tracking-wider ${isDark ? "text-white/30" : "text-slate-400"}`}>VIBE PROJECT — AI 튜터</span>
           </div>
           <div className="space-y-4 p-6">
@@ -648,9 +620,7 @@ export default function Home() {
             </div>
             <div className="flex gap-3">
               <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${isDark ? "bg-gradient-to-br from-blue-500 to-violet-500" : "bg-blue-600"}`}>AI</div>
-              <div className={`inline-flex items-center rounded-2xl rounded-tl-sm px-4 py-3 text-sm ${isDark ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500"}`}>
-                <span className="animate-pulse">입력 중...</span>
-              </div>
+              <div className={`inline-flex items-center rounded-2xl rounded-tl-sm px-4 py-3 text-sm ${isDark ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500"}`}><span className="animate-pulse">입력 중...</span></div>
             </div>
           </div>
         </div>
@@ -673,7 +643,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── 영상 플레이어 데모 ── */}
+      {/* ── 스토리텔링 데모 ── */}
       <section id="demo" ref={videoReveal.ref} className={`relative z-10 px-6 py-24 overflow-hidden ${isDark ? "" : "bg-slate-50"}`}>
         {isDark && (
           <div className="pointer-events-none absolute inset-0">
@@ -683,29 +653,29 @@ export default function Home() {
         )}
         <div className={`mx-auto max-w-4xl relative ${revealClass(videoReveal.isVisible)}`}>
           <div className="mx-auto max-w-2xl text-center mb-14">
-            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-4 ${isDark ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "bg-blue-50 text-blue-600 border border-blue-200"}`}>
+            <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-4 ${isDark ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-red-50 text-red-500 border border-red-200"}`}>
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
               </span>
-              인터랙티브 데모
+              23초 스토리 데모
             </div>
             <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">
-              42초 만에 보는
-              <span className={`ml-2 ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "text-blue-600"}`}>전체 과정</span>
+              비전공자의 하루를
+              <span className={`ml-2 ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "text-blue-600"}`}>23초로 압축</span>
             </h2>
             <p className={`mt-4 text-base leading-7 ${isDark ? "text-white/40" : "text-slate-500"}`}>
-              재생 버튼을 눌러 아이디어 입력부터 전세계 배포까지 직접 체험해보세요.
+              고민에서 시작해, 하루 만에 나만의 서비스를 완성하는 여정을 직접 체험해보세요.
             </p>
           </div>
 
-          <FakeVideoPlayer isDark={isDark} />
+          <StoryVideoPlayer isDark={isDark} />
 
           <div className="mt-8 text-center">
-            <p className={`text-xs mb-4 ${isDark ? "text-white/30" : "text-slate-400"}`}>마음에 드시나요? 지금 바로 시작해보세요.</p>
+            <p className={`text-xs mb-4 ${isDark ? "text-white/30" : "text-slate-400"}`}>이 스토리의 주인공이 되어보세요.</p>
             <div className="flex justify-center gap-3">
               <a href="/workspace" className={`inline-flex items-center gap-2 text-sm font-bold transition hover:scale-[1.02] px-6 py-3 rounded-xl text-white ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 shadow-lg shadow-violet-500/20 hover:opacity-90" : "bg-blue-600 shadow-lg shadow-blue-200 hover:bg-blue-700"}`}>
-                바이브 코딩 시작하기 →
+                나도 시작하기 →
               </a>
               <a href="/learn" className={`inline-flex items-center gap-2 text-sm font-bold transition hover:scale-[1.02] px-6 py-3 rounded-xl border ${isDark ? "border-white/10 text-white/60 hover:bg-white/5" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}>
                 먼저 배워보기
@@ -727,13 +697,7 @@ export default function Home() {
               <div className={`absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full ${isDark ? "bg-red-500/20 text-red-400" : "bg-red-100 text-red-500"}`}>😰 Before</div>
               <h3 className={`text-lg font-bold mb-6 ${isDark ? "text-red-400" : "text-red-600"}`}>기존 방식</h3>
               <div className="space-y-4">
-                {[
-                  { icon: "💸", label: "개발 외주비", value: "300~1000만원" },
-                  { icon: "📚", label: "코딩 공부 기간", value: "3~6개월" },
-                  { icon: "😵", label: "기획서 작성", value: "2~3주 소요" },
-                  { icon: "🚫", label: "에러 발생 시", value: "구글링 지옥" },
-                  { icon: "😢", label: "포기 확률", value: "매우 높음" },
-                ].map((item) => (
+                {[{ icon: "💸", label: "개발 외주비", value: "300~1000만원" }, { icon: "📚", label: "코딩 공부 기간", value: "3~6개월" }, { icon: "😵", label: "기획서 작성", value: "2~3주 소요" }, { icon: "🚫", label: "에러 발생 시", value: "구글링 지옥" }, { icon: "😢", label: "포기 확률", value: "매우 높음" }].map((item) => (
                   <div key={item.label} className="flex items-center justify-between">
                     <span className={`text-sm ${isDark ? "text-white/60" : "text-slate-600"}`}>{item.icon} {item.label}</span>
                     <span className={`text-sm font-bold ${isDark ? "text-red-400" : "text-red-500"}`}>{item.value}</span>
@@ -745,13 +709,7 @@ export default function Home() {
               <div className={`absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full ${isDark ? "bg-emerald-500/20 text-emerald-400" : "bg-emerald-100 text-emerald-600"}`}>😎 After</div>
               <h3 className={`text-lg font-bold mb-6 ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>바이브코딩</h3>
               <div className="space-y-4">
-                {[
-                  { icon: "💰", label: "총 비용", value: "0원 (무료)" },
-                  { icon: "⚡", label: "프로토타입 완성", value: "하루면 충분" },
-                  { icon: "🤖", label: "기획서 작성", value: "AI가 1초에 생성" },
-                  { icon: "🛡️", label: "에러 발생 시", value: "AI 해결사 즉시 호출" },
-                  { icon: "🎉", label: "완성 확률", value: "매우 높음" },
-                ].map((item) => (
+                {[{ icon: "💰", label: "총 비용", value: "0원 (무료)" }, { icon: "⚡", label: "프로토타입 완성", value: "하루면 충분" }, { icon: "🤖", label: "기획서 작성", value: "AI가 1초에 생성" }, { icon: "🛡️", label: "에러 발생 시", value: "AI 해결사 즉시 호출" }, { icon: "🎉", label: "완성 확률", value: "매우 높음" }].map((item) => (
                   <div key={item.label} className="flex items-center justify-between">
                     <span className={`text-sm ${isDark ? "text-white/60" : "text-slate-600"}`}>{item.icon} {item.label}</span>
                     <span className={`text-sm font-bold ${isDark ? "text-emerald-400" : "text-emerald-600"}`}>{item.value}</span>
@@ -772,9 +730,7 @@ export default function Home() {
               단순한 도구가 아닙니다.<br />
               <span className={isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : ""}>당신의 첫 바이브 코딩 튜터입니다.</span>
             </h2>
-            <p className={`mt-4 text-base leading-7 ${isDark ? "text-white/40" : "text-slate-500"}`}>
-              비전공자가 처음 AI로 개발을 시도할 때 막막한 지점들을 짚어주고, 스스로 아이디어를 구현할 수 있도록 단계별로 안내합니다.
-            </p>
+            <p className={`mt-4 text-base leading-7 ${isDark ? "text-white/40" : "text-slate-500"}`}>비전공자가 처음 AI로 개발을 시도할 때 막막한 지점들을 짚어주고, 스스로 아이디어를 구현할 수 있도록 단계별로 안내합니다.</p>
           </div>
           <div className="mt-16 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {features.map((feature, i) => (

@@ -255,16 +255,18 @@ export async function POST(req: NextRequest) {
       `;
     } 
     
-    // 4. Step 4 전용: 더미 데이터 생성기
+    // 4. Step 4 전용: 더미 데이터 생성기 (파싱 안정성 대폭 개선)
     else if (type === "mock") {
       prompt = `
 사용자가 기획 중인 서비스 아이디어 주제를 기반으로, 프론트엔드 마크업 개발에 즉시 임베딩할 수 있는 고품질의 가짜 목업 JSON 데이터를 생성하세요.
 기획 주제: "${idea}"
 
 데이터는 무조건 배열 구조를 포함해야 하며 가짜 샘플 데이터 객체가 5개 이상 꼼꼼하게 들어가 있어야 합니다. 
-아래 JSON 형식으로만 답변하세요:
+아래 구조의 JSON 규격에 맞춰 일반 배열 오브젝트를 리턴하세요. 절대로 문자열 내부 이스케이프 처리를 위해 애쓰지 마세요:
 {
-  "jsonCode": "이 자리에 문자열 형태로 이스케이프된 순수 JSON 배열 데이터를 넣어주세요. 예: [\\n  {\\n    \\\"id\\\": 1,\\n    ...\\n  }\\n]"
+  "mockData": [
+    { "id": 1, "title": "샘플 데이터 예시" }
+  ]
 }
       `;
     } 
@@ -311,7 +313,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // [기존 유지] 안정적인 정규식 기반 JSON 파싱 및 구조 정리 로직
+    // [개선] 안정적인 정규식 기반 JSON 파싱 및 구조 정리 로직
     const jsonMatch = result.text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("JSON 형식 응답을 파싱하지 못했습니다.");
@@ -320,17 +322,33 @@ export async function POST(req: NextRequest) {
     let cleanedJson = jsonMatch[0]
       .replace(/```json/g, "")
       .replace(/```/g, "")
-      .replace(/[\u0000-\u001F\u007F-\u009F]/g, " ")
+      // ✨ [수정 반영] 줄바꿈(\n, \r)과 탭(\t)은 살려두고 에러 유발성 제어 문자만 공백 치환
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, " ")
       .trim();
 
     let parsed;
     try {
       parsed = JSON.parse(cleanedJson);
     } catch {
-      const lastBrace = cleanedJson.lastIndexOf("}");
-      cleanedJson = cleanedJson.substring(0, lastBrace + 1);
-      parsed = JSON.parse(cleanedJson);
+      try {
+        const lastBrace = cleanedJson.lastIndexOf("}");
+        cleanedJson = cleanedJson.substring(0, lastBrace + 1);
+        parsed = JSON.parse(cleanedJson);
+      } catch (parseErr) {
+        throw new Error("AI의 출력 데이터를 규격화된 객체로 전환하는 데 실패했습니다.");
+      }
     }
+
+    // [보완] mock 데이터가 들어왔을 때 프론트엔드가 요구하는 기존 string 키값 포맷 호환성 가공 레이어
+    if (type === "mock" && parsed && parsed.mockData) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          jsonCode: JSON.stringify(parsed.mockData, null, 2)
+        },
+        model: result.model,
+          });
+        }
 
     return NextResponse.json({
       success: true,

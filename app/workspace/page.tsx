@@ -14,6 +14,7 @@ import type {
 } from "@/lib/vibe-types";
 
 import {
+  buildPremiumStep3Prompts,
   buildPresentationSummary,
   buildToolPrompts,
 } from "@/lib/vibe-extra";
@@ -726,74 +727,182 @@ export default function Workspace() {
   };
 
   const handleDownloadPDF = async () => {
-    if (!reportRef.current) return;
-    setPdfDownloading(true);
-    try {
-      const doc = new jsPDF("p", "mm", "a4");
-      const pageMargin = 12;
-      const pageWidth = doc.internal.pageSize.getWidth();
-      const pageHeight = doc.internal.pageSize.getHeight();
-      const contentWidth = pageWidth - pageMargin * 2;
-      const contentHeight = pageHeight - pageMargin * 2;
+  if (!reportRef.current) return;
 
-      const blocks = Array.from(reportRef.current.querySelectorAll<HTMLElement>("[data-pdf-block='true']"));
-      const targets = blocks.length > 0 ? blocks : [reportRef.current];
-      let cursorY = pageMargin;
+  setPdfDownloading(true);
 
-      for (const target of targets) {
-        const canvas = await html2canvas(target, {
-          scale: Math.min(window.devicePixelRatio || 2, 2.5),
-          useCORS: true,
-          backgroundColor: "#ffffff",
-          windowWidth: 860,
-          logging: false,
-        });
-        const blockHeightMm = (canvas.height * contentWidth) / canvas.width;
+  try {
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageMargin = 12;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const contentWidth = pageWidth - pageMargin * 2;
+    const contentHeight = pageHeight - pageMargin * 2;
 
-        if (blockHeightMm <= contentHeight) {
-          if (cursorY > pageMargin && cursorY + blockHeightMm > pageHeight - pageMargin) {
-            doc.addPage();
-            cursorY = pageMargin;
-          }
-          doc.addImage(canvas.toDataURL("image/png", 1), "PNG", pageMargin, cursorY, contentWidth, blockHeightMm, undefined, "FAST");
-          cursorY += blockHeightMm + 4;
-          continue;
+    const reportElement = reportRef.current;
+
+    const blocks = Array.from(
+      reportElement.querySelectorAll<HTMLElement>("[data-pdf-block='true']")
+    );
+
+    const targets = blocks.length > 0 ? blocks : [reportElement];
+
+    let cursorY = pageMargin;
+
+    const addNewPageIfNeeded = (heightMm: number) => {
+      if (cursorY > pageMargin && cursorY + heightMm > pageHeight - pageMargin) {
+        doc.addPage();
+        cursorY = pageMargin;
+      }
+    };
+
+    for (const target of targets) {
+      const originalOverflow = target.style.overflow;
+      const originalHeight = target.style.height;
+      const originalMaxHeight = target.style.maxHeight;
+
+      target.style.overflow = "visible";
+      target.style.height = "auto";
+      target.style.maxHeight = "none";
+
+      const canvas = await html2canvas(target, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+        logging: false,
+        width: target.scrollWidth,
+        height: target.scrollHeight + 24,
+        windowWidth: Math.max(reportElement.scrollWidth, target.scrollWidth),
+        windowHeight: Math.max(reportElement.scrollHeight, target.scrollHeight + 300),
+        onclone: (clonedDocument) => {
+          const clonedBody = clonedDocument.body;
+          clonedBody.style.fontFamily =
+            `"Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", Arial, sans-serif`;
+
+          clonedDocument.querySelectorAll<HTMLElement>("*").forEach((element) => {
+            element.style.boxSizing = "border-box";
+            element.style.wordBreak = "keep-all";
+            element.style.overflowWrap = "anywhere";
+            element.style.textRendering = "geometricPrecision";
+          });
+
+          clonedDocument.querySelectorAll<HTMLElement>("p, li, span, strong, pre").forEach((element) => {
+            element.style.lineHeight = "1.9";
+          });
+
+          clonedDocument.querySelectorAll<HTMLElement>("pre").forEach((element) => {
+            element.style.whiteSpace = "pre-wrap";
+            element.style.wordBreak = "break-word";
+            element.style.overflow = "visible";
+            element.style.maxHeight = "none";
+          });
+        },
+      });
+
+      target.style.overflow = originalOverflow;
+      target.style.height = originalHeight;
+      target.style.maxHeight = originalMaxHeight;
+
+      if (canvas.width === 0 || canvas.height === 0) {
+        continue;
+      }
+
+      const blockHeightMm = (canvas.height * contentWidth) / canvas.width;
+
+      if (blockHeightMm <= contentHeight) {
+        addNewPageIfNeeded(blockHeightMm);
+
+        doc.addImage(
+          canvas.toDataURL("image/png", 1),
+          "PNG",
+          pageMargin,
+          cursorY,
+          contentWidth,
+          blockHeightMm,
+          undefined,
+          "FAST"
+        );
+
+        cursorY += blockHeightMm + 5;
+        continue;
+      }
+
+      const pxPerMm = canvas.width / contentWidth;
+      const safeSliceHeightPx = Math.floor((contentHeight - 6) * pxPerMm);
+      const overlapPx = 28;
+
+      let sourceY = 0;
+
+      while (sourceY < canvas.height) {
+        const currentSliceHeight = Math.min(
+          safeSliceHeightPx,
+          canvas.height - sourceY
+        );
+
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = currentSliceHeight + 24;
+
+        const context = pageCanvas.getContext("2d");
+
+        if (!context) {
+          throw new Error("PDF 이미지를 준비하지 못했습니다.");
         }
 
-        const pxPerMm = canvas.width / contentWidth;
-        const sliceHeightPx = Math.floor(contentHeight * pxPerMm);
-        let sourceY = 0;
-        while (sourceY < canvas.height) {
-          const currentSliceHeight = Math.min(sliceHeightPx, canvas.height - sourceY);
-          const pageCanvas = document.createElement("canvas");
-          pageCanvas.width = canvas.width;
-          pageCanvas.height = currentSliceHeight;
-          const context = pageCanvas.getContext("2d");
-          if (!context) throw new Error("PDF 이미지를 준비하지 못했습니다.");
-          context.fillStyle = "#ffffff";
-          context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-          context.drawImage(canvas, 0, sourceY, canvas.width, currentSliceHeight, 0, 0, canvas.width, currentSliceHeight);
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        context.drawImage(
+          canvas,
+          0,
+          sourceY,
+          canvas.width,
+          currentSliceHeight,
+          0,
+          0,
+          canvas.width,
+          currentSliceHeight
+        );
 
-          if (cursorY > pageMargin) {
-            doc.addPage();
-            cursorY = pageMargin;
-          }
-          const sliceHeightMm = currentSliceHeight / pxPerMm;
-          doc.addImage(pageCanvas.toDataURL("image/png", 1), "PNG", pageMargin, cursorY, contentWidth, sliceHeightMm, undefined, "FAST");
-          sourceY += currentSliceHeight;
-          if (sourceY < canvas.height) doc.addPage();
+        if (cursorY > pageMargin) {
+          doc.addPage();
+          cursorY = pageMargin;
+        }
+
+        const sliceHeightMm = (pageCanvas.height * contentWidth) / pageCanvas.width;
+
+        doc.addImage(
+          pageCanvas.toDataURL("image/png", 1),
+          "PNG",
+          pageMargin,
+          cursorY,
+          contentWidth,
+          sliceHeightMm,
+          undefined,
+          "FAST"
+        );
+
+        sourceY += Math.max(currentSliceHeight - overlapPx, currentSliceHeight);
+
+        if (sourceY < canvas.height) {
+          doc.addPage();
           cursorY = pageMargin;
         }
       }
-      doc.save(`VIBE_하루만에_실현하는_기획서.pdf`);
-      setToast({ message: "PDF 저장이 완료되었습니다.", variant: "success" });
-    } catch (error) {
-      console.error(error);
-      setToast({ message: "PDF 생성 중 오류가 발생했습니다. 화면 인쇄 기능을 함께 사용해보세요.", variant: "error" });
-    } finally {
-      setPdfDownloading(false);
     }
-  };
+
+    doc.save("VIBE_하루만에_실현하는_기획서.pdf");
+    setToast({ message: "PDF 저장이 완료되었습니다.", variant: "success" });
+  } catch (error) {
+    console.error(error);
+    setToast({
+      message:
+        "PDF 생성 중 오류가 발생했습니다. 글씨가 잘리면 브라우저 인쇄 기능도 함께 확인해주세요.",
+      variant: "error",
+    });
+  } finally {
+    setPdfDownloading(false);
+  }
+};
 
   const totalChecked = [
     planData ? true : false,
@@ -805,6 +914,7 @@ export default function Workspace() {
   const progressPercent = Math.round((totalChecked / 4) * 100);
 
   const toolPrompts = planData ? buildToolPrompts(planData) : [];
+  const premiumStep3Prompts = planData ? buildPremiumStep3Prompts(planData) : null;
   const presentationSummary = planData
     ? buildPresentationSummary(planData)
     : null;
@@ -1361,7 +1471,7 @@ export default function Workspace() {
                   {step3Tab === "ui" && (
                     <div className="space-y-4">
                       <div className="text-[11px] text-blue-500 font-bold">먼저 1번 프롬프트로 화면 골격을 만들고, 결과가 뜬 뒤 2번 프롬프트로 완성도를 올리세요.</div>
-                      {planData.prompts?.ui?.map((p, i) => (
+                      {(premiumStep3Prompts?.ui || planData.prompts?.ui || []).map((p, i) => (
                         <div key={i} className={`flex flex-col justify-between gap-4 rounded-xl border p-4 sm:flex-row sm:items-start ${isDark ? "bg-black/20 border-white/10" : "bg-slate-50 border-slate-200"}`}>
                           <div className="min-w-0 flex-1">
                             <span className="mb-2 block text-[10px] font-black uppercase tracking-wider text-blue-500">UI 프롬프트 {i + 1}</span>
@@ -1377,7 +1487,7 @@ export default function Workspace() {
                   {step3Tab === "ide" && (
                     <div className="space-y-4">
                       <div className="text-[11px] text-violet-500 font-bold">Cursor에서는 파일을 먼저 읽게 한 뒤, 아래 프롬프트를 한 번에 하나씩 적용하면 충돌이 줄어듭니다.</div>
-                      {planData.prompts?.ide?.map((p, i) => (
+                      {(premiumStep3Prompts?.ide || planData.prompts?.ide || []).map((p, i) => (
                         <div key={i} className={`flex flex-col justify-between gap-4 rounded-xl border p-4 sm:flex-row sm:items-start ${isDark ? "bg-black/20 border-white/10" : "bg-slate-50 border-slate-200"}`}>
                           <div className="min-w-0 flex-1">
                             <span className="mb-2 block text-[10px] font-black uppercase tracking-wider text-violet-500">Cursor 프롬프트 {i + 1}</span>
@@ -1394,9 +1504,18 @@ export default function Workspace() {
                     <div className="space-y-3">
                       <div className="text-[11px] text-emerald-500 font-bold mb-2">Supabase SQL Editor의 New query 화면에 붙여넣을 데이터 설계 초안입니다.</div>
                       <div className="flex flex-col justify-between gap-4 overflow-x-auto rounded-xl border bg-slate-900 p-4 font-mono text-xs text-emerald-400 sm:flex-row sm:items-start">
-                        <pre className="whitespace-pre-wrap flex-1">{planData.prompts?.db || "정보를 준비하고 있습니다."}</pre>
-                        <button type="button" aria-label="Supabase SQL 전체 복사" onClick={() => triggerCopy(planData.prompts?.db)} className="shrink-0 text-xs px-2.5 py-1.5 font-bold border rounded bg-slate-800 text-white">
-                          {copiedText === planData.prompts?.db ? "복사 완료!" : "코드 전체 복사"}
+                        <pre className="whitespace-pre-wrap flex-1">
+                          {premiumStep3Prompts?.db || planData.prompts?.db || "정보를 준비하고 있습니다."}
+                        </pre>
+                        <button type="button" aria-label="Supabase SQL 전체 복사" onClick={() =>
+                          triggerCopy(
+                          premiumStep3Prompts?.db || planData.prompts?.db,
+                          "Supabase DB 설계 프롬프트가 복사되었습니다."
+                          )
+                        } className="shrink-0 text-xs px-2.5 py-1.5 font-bold border rounded bg-slate-800 text-white">
+                          {copiedText === (premiumStep3Prompts?.db || planData.prompts?.db)
+                            ? "복사 완료!"
+                            : "프롬프트 전체 복사"}
                         </button>
                       </div>
                     </div>
@@ -1643,8 +1762,34 @@ export default function Workspace() {
 
       {/* PDF Hidden DOM */}
       {planData && (
-        <div style={{ position: "absolute", top: "-9999px", left: "-9999px" }}>
-          <div ref={reportRef} style={{ width: "860px", padding: "48px", backgroundColor: "#ffffff", color: "#1e293b", fontFamily: "Arial, Apple SD Gothic Neo, Malgun Gothic, sans-serif" }}>
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "1px",
+            height: "1px",
+            overflow: "hidden",
+            opacity: 0,
+            pointerEvents: "none",
+            zIndex: -1,
+          }}
+        >
+          <div
+            ref={reportRef}
+            style={{
+              width: "860px",
+              boxSizing: "border-box",
+              padding: "56px 52px",
+              backgroundColor: "#ffffff",
+              color: "#1e293b",
+              fontFamily:
+                '"Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", Arial, sans-serif',
+              lineHeight: 1.85,
+              wordBreak: "keep-all",
+              overflowWrap: "anywhere",
+            }}
+          >
             <div data-pdf-block="true" style={{ borderBottom: "4px solid #2563eb", paddingBottom: "18px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: "20px", fontSize: "11px", fontWeight: 700, color: "#2563eb", letterSpacing: "0.04em" }}>
                 <span>VIBE PROJECT PLANNING REPORT</span>

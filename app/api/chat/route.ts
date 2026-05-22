@@ -10,10 +10,8 @@ const API_KEYS = [
 const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 const MODEL = "llama-3.3-70b-versatile";
 
-// 키 순환 인덱스
 let currentKeyIndex = 0;
 
-// ── Groq 호출 함수 (키 순환 방식) ──
 async function callGroq(
   prompt: string,
   useJson: boolean = true
@@ -29,7 +27,7 @@ async function callGroq(
     model: MODEL,
     messages: [{ role: "user", content: prompt }],
     temperature: 0.7,
-    max_tokens: 4096,
+    max_tokens: 8000,
   };
 
   if (useJson) {
@@ -59,9 +57,6 @@ async function callGroq(
   return { text, model: data?.model || MODEL };
 }
 
-// ──────────────────────────────────────────────
-// 🎭 톤(tone) 기반 페르소나 프리셋 생성기
-// ──────────────────────────────────────────────
 function getToneDirective(tone: string): string {
   if (tone === "tsundere") {
     return `
@@ -86,7 +81,6 @@ function getToneDirective(tone: string): string {
   `;
 }
 
-// ── GET (상태 확인용) ──
 export async function GET() {
   return NextResponse.json({
     success: true,
@@ -97,43 +91,42 @@ export async function GET() {
   });
 }
 
-// ──────────────────────────────────────────────
-// 🚀 POST 라우트
-// ──────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const { idea, type, platform, bm, tone } = await req.json();
-
     const toneDirective = getToneDirective(tone || "kind");
-
     let prompt = "";
     let useJson = true;
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 1. 메인 기획서 생성
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     if (type === "plan") {
       prompt = `
 ${toneDirective}
 
-당신은 코딩과 개발 용어를 전혀 모르는 비전공자 대학생들을 위한 최고의 스타트업 멘토이자 가이드입니다.
-사용자가 입력한 대략적인 아이디어를 분석하여, 개발자 수준의 전문성을 내포하되 "철저하게 초등학생도 이해할 수 있는 쉬운 일상 용어와 비유"를 사용하여 기획 요건을 정리하고 JSON 포맷으로 생성해야 합니다.
+당신은 실리콘밸리 출신 10년차 스타트업 전문 컨설턴트이자, 비전공자 대학생들을 위한 최고의 서비스 기획 멘토입니다.
+반드시 아래 규칙을 따르세요:
+1. 모든 내용은 반드시 한국어로 작성하세요.
+2. 전문적이고 구체적인 내용으로 작성하되, 비전공자도 이해할 수 있는 쉬운 언어를 사용하세요.
+3. 실제 존재하는 서비스(당근마켓, 카카오, 토스 등)를 예시로 들어 설명하세요.
+4. 각 기능은 실제로 구현 가능한 수준으로 구체적으로 작성하세요.
+5. userStories는 실제 사용자가 겪을 법한 구체적인 상황을 묘사하세요.
+6. features의 criteria는 실제로 테스트 가능한 기준으로 작성하세요.
+7. prompts의 ui/ide/db는 실제로 복붙해서 바로 쓸 수 있는 수준으로 매우 상세하게 작성하세요.
 
 **위 [페르소나 지시]의 말투를 summary, problem, target, 각 기능의 desc, criteria 전체에 일관되게 적용하세요.**
 
 사용자 아이디어 원문: "${idea}"
-선택된 타겟 플랫폼 규격: "${platform || "지정되지 않음 (전체 플랫폼)"}"
+선택된 타겟 플랫폼 규격: "${platform || "지정되지 않음"}"
 선택된 비즈니스 모델(BM): "${bm || "지정되지 않음"}"
 
 아래의 JSON Schema 형식을 정확하게 준수하여 채워주세요. Key 명칭을 절대 바꾸지 마십시오.
-마크다운(\`\`\`json) 등 앞뒤 부연설명 없이 오직 순수한 JSON만 반환해야 합니다:
+마크다운 등 앞뒤 부연설명 없이 오직 순수한 JSON만 반환해야 합니다:
 
 {
-  "summary": "이 서비스의 핵심 구조와 오늘 당장 무엇을 만들면 되는지 페르소나 말투로 요약한 코칭 메시지 (2-3문장)",
-  "problem": "이 서비스가 해결하려는 불편함을 친근한 일상 사례를 들어 페르소나 말투로 정의 (2-3문장)",
-  "target": "이 서비스를 가장 먼저 좋아해 줄 구체적인 사람들의 모습이나 페르소나 설명 (2-3문장)",
+  "summary": "이 서비스의 핵심 구조와 오늘 당장 무엇을 만들면 되는지 페르소나 말투로 요약한 코칭 메시지 (2-3문장, 구체적인 기술 스택과 구현 방법 포함)",
+  "problem": "이 서비스가 해결하려는 불편함을 당근마켓/토스/카카오 같은 실제 서비스 사례를 들어 페르소나 말투로 정의 (2-3문장)",
+  "target": "나이/직업/생활패턴까지 구체적으로 묘사한 타겟 페르소나 설명. 예: '매일 아침 지하철을 타는 25세 직장인 김지수씨는...' (2-3문장)",
   "userStories": [
-    "[어떤 유저]는 [불편함 해결 or 재미] 위해 [화면에서 어떤 행동]을 할 수 있다",
+    "구체적인 상황과 행동이 담긴 유저 시나리오 1 (예: 자취생 유저가 냉장고 속 재료를 앱에 입력하면...)",
     "유저 시나리오 2",
     "유저 시나리오 3",
     "유저 시나리오 4",
@@ -142,75 +135,72 @@ ${toneDirective}
   "features": [
     {
       "id": "SYS-REQ-01",
-      "name": "쉽게 풀어쓴 기능 이름",
-      "desc": "이 기능이 왜 필요하고 유저가 어떻게 쓰는지 페르소나 말투로 설명",
+      "name": "기능 이름 (한국어로 쉽게)",
+      "desc": "이 기능이 왜 필요하고 유저가 어떻게 쓰는지 페르소나 말투로 구체적으로 설명 (당근마켓의 채팅기능처럼 구체적인 예시 포함)",
       "criteria": [
-        "AI 코딩 완료 후 눈으로 검사할 기준 1",
-        "검사 기준 2",
-        "검사 기준 3"
+        "버튼을 클릭했을 때 1초 이내에 응답이 오는가",
+        "입력값이 비어있을 때 빨간 경고 문구가 뜨는가",
+        "완료 후 성공 메시지가 화면에 표시되는가"
       ]
     },
     {
       "id": "SYS-REQ-02",
       "name": "기능 이름 2",
       "desc": "기능 설명",
-      "criteria": ["검사 기준 1", "검사 기준 2"]
+      "criteria": ["검사 기준 1", "검사 기준 2", "검사 기준 3"]
     },
     {
       "id": "SYS-REQ-03",
       "name": "기능 이름 3",
       "desc": "기능 설명",
-      "criteria": ["검사 기준 1", "검사 기준 2"]
+      "criteria": ["검사 기준 1", "검사 기준 2", "검사 기준 3"]
     },
     {
       "id": "SYS-REQ-04",
       "name": "기능 이름 4",
       "desc": "기능 설명",
-      "criteria": ["검사 기준 1", "검사 기준 2"]
+      "criteria": ["검사 기준 1", "검사 기준 2", "검사 기준 3"]
     }
   ],
   "screens": [
     {
       "id": "UI-SCR-01",
-      "name": "쉬운 화면 이름 (예: 첫 화면 - 추천 피드와 검색창)",
-      "desc": "유저가 앱을 켰을 때 처음 보게 될 화면의 레이아웃과 버튼들의 위치 기획 설명"
+      "name": "화면 이름",
+      "desc": "이 화면에서 유저가 보게 될 요소들을 위에서 아래 순서로 나열. 예: 상단 로고/검색바 → 카테고리 필터 탭 → 상품 카드 그리드(이미지+제목+가격) → 하단 네비게이션 바"
     },
     {
       "id": "UI-SCR-02",
       "name": "화면 이름 2",
-      "desc": "화면 레이아웃 및 흐름 설명"
+      "desc": "화면 구성 상세 설명"
     },
     {
       "id": "UI-SCR-03",
       "name": "화면 이름 3",
-      "desc": "화면 레이아웃 및 흐름 설명"
+      "desc": "화면 구성 상세 설명"
     },
     {
       "id": "UI-SCR-04",
       "name": "화면 이름 4",
-      "desc": "화면 레이아웃 및 흐름 설명"
+      "desc": "화면 구성 상세 설명"
     }
   ],
   "prompts": {
     "ui": [
-      "v0.dev나 Bolt.new에 복사+붙여넣기하면 세련된 화면 디자인이 튀어나오도록, 레이아웃/색상/Shadcn UI 아이콘까지 완벽하게 지정한 한글 프롬프트 1",
-      "버튼 인터랙션과 애니메이션, 반응형 레이아웃까지 포함한 디자인 업그레이드용 프롬프트 2",
-      "세부 페이지(상세/설정/프로필 등)의 레이아웃을 지정하는 프롬프트 3"
+      "【v0.dev/bolt.new 전용 UI 프롬프트 1】 다음 조건을 모두 만족하는 Next.js 14 + Tailwind CSS + shadcn/ui 기반의 [서비스명] 메인 페이지를 만들어줘. 1) 상단 네비게이션: 로고(좌측) + 메뉴(우측, 모바일에서는 햄버거 메뉴로 변환) 2) 히어로 섹션: 큰 제목 + 부제목 + CTA 버튼 2개(주요/보조) + 배경은 그라디언트 3) 기능 소개 섹션: 카드 3개를 가로로 배치(아이콘+제목+설명) 4) 색상 테마: 메인컬러 파란색 계열(#2563eb), 배경 흰색, 다크모드 지원 5) 폰트: 한국어 최적화를 위해 Noto Sans KR 사용 6) 반응형: 모바일/태블릿/데스크탑 모두 완벽 지원 7) 모든 텍스트는 한국어로 작성",
+      "【v0.dev/bolt.new 전용 UI 프롬프트 2】 위에서 만든 페이지에 추가로 다음을 구현해줘. 1) 사용자 리뷰/후기 섹션: 별점(★) + 텍스트 + 작성자 이름이 있는 카드 3개를 가로 배치 2) FAQ 아코디언 섹션: 질문 클릭시 답변이 펼쳐지는 인터랙션 5개 3) 하단 푸터: 회사명/이용약관/개인정보처리방침 링크 + 소셜미디어 아이콘 4) 스크롤 애니메이션: 각 섹션이 화면에 들어올 때 부드럽게 페이드인 5) 로딩 스피너: 버튼 클릭시 로딩 상태 표시",
+      "【v0.dev/bolt.new 전용 UI 프롬프트 3】 다음 조건의 상세 페이지와 폼 화면을 만들어줘. 1) 상세 페이지: 좌측 이미지 갤러리 + 우측 정보(제목/가격/설명/버튼) 레이아웃 2) 입력 폼: 각 필드에 라벨+플레이스홀더+에러메시지 표시, 제출 버튼은 입력 완료시에만 활성화 3) 모달 팝업: 확인/취소 버튼이 있는 다이얼로그 4) 토스트 알림: 성공(초록)/실패(빨강)/정보(파랑) 3가지 5) 빈 상태 화면: 데이터 없을 때 일러스트+안내문구+액션버튼 표시"
     ],
     "ide": [
-      "Cursor/Windsurf 채팅창에 붙여넣어서 전체 폴더 뼈대와 기본 파일을 생성하라는 아키텍처 프롬프트",
-      "API 라우터와 데이터 연결을 자동으로 짜주는 프롬프트",
-      "인증/로그인 흐름을 구현하라는 프롬프트"
+      "【Cursor AI 채팅창(Ctrl+L 또는 Cmd+L) 전용 프롬프트 1 - 프로젝트 초기 세팅】 나는 비전공자 대학생이고 Next.js로 처음 프로젝트를 만들고 있어. 아래 스펙으로 프로젝트 초기 구조를 완성해줘. [기술 스택] - Frontend: Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui - Backend: Next.js API Routes - Database: Supabase (PostgreSQL) - 배포: Vercel [폴더 구조 요청] app/ 폴더 안에 (메인페이지)/(상세페이지)/(마이페이지) 라우트를 만들고, components/ 폴더에 공통 컴포넌트(Header, Footer, Button, Card)를 만들어줘. 각 파일에 한국어 주석을 달아줘.",
+      "【Cursor AI 채팅창 전용 프롬프트 2 - API 및 데이터 연결】 Supabase와 연결해서 데이터를 불러오는 기능을 만들어줘. 1) app/api/ 폴더에 GET/POST/PUT/DELETE API 라우트 파일을 만들어줘 2) Supabase 클라이언트 설정 파일(lib/supabase.ts)을 만들어줘 3) 데이터를 불러올 때 로딩 스피너를 보여주고, 에러 발생시 사용자에게 친절한 한국어 에러 메시지를 보여줘 4) 환경변수는 .env.local 파일에 NEXT_PUBLIC_SUPABASE_URL과 NEXT_PUBLIC_SUPABASE_ANON_KEY를 사용해줘 5) 모든 코드에 한국어 주석을 달아줘",
+      "【Cursor AI 채팅창 전용 프롬프트 3 - 로그인/회원가입 구현】 Supabase Auth를 사용해서 이메일/비밀번호 로그인과 구글 소셜 로그인을 구현해줘. 1) 로그인 페이지(app/login/page.tsx): 이메일+비밀번호 입력폼 + 구글 로그인 버튼 2) 회원가입 페이지(app/signup/page.tsx): 이름+이메일+비밀번호+비밀번호확인 입력폼 3) 로그인 상태에 따라 헤더의 버튼이 '로그인'에서 '로그아웃+내 프로필'로 바뀌게 해줘 4) 로그인 안한 사용자가 보호된 페이지에 접근하면 자동으로 로그인 페이지로 이동시켜줘 5) 모든 에러 메시지는 한국어로 보여줘"
     ],
-    "db": "Supabase SQL Editor에 그대로 붙여넣을 수 있는 완전한 DDL SQL 코드. CREATE TABLE 문과 각 컬럼에 대한 한글 주석을 반드시 포함. RLS(Row Level Security) 정책 예시도 1개 이상 포함."
+    "db": "-- =============================================\n-- [서비스명] Supabase 데이터베이스 설계\n-- Supabase 대시보드 → SQL Editor → 아래 코드 전체 복사 후 실행\n-- =============================================\n\n-- 1. 사용자 프로필 테이블 (Supabase Auth와 연동)\nCREATE TABLE IF NOT EXISTS public.profiles (\n  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY, -- 사용자 고유 ID (자동생성)\n  nickname VARCHAR(50) NOT NULL, -- 닉네임\n  email VARCHAR(255) NOT NULL, -- 이메일\n  avatar_url TEXT, -- 프로필 이미지 URL\n  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL, -- 가입일시\n  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL -- 최종수정일시\n);\n\n-- 2. 메인 콘텐츠 테이블\nCREATE TABLE IF NOT EXISTS public.posts (\n  id UUID DEFAULT gen_random_uuid() PRIMARY KEY, -- 게시물 고유 ID\n  user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL, -- 작성자 ID\n  title VARCHAR(200) NOT NULL, -- 제목\n  content TEXT NOT NULL, -- 내용\n  category VARCHAR(50), -- 카테고리\n  image_url TEXT, -- 이미지 URL\n  view_count INTEGER DEFAULT 0, -- 조회수\n  is_active BOOLEAN DEFAULT TRUE, -- 활성화 여부\n  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL, -- 작성일시\n  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL -- 수정일시\n);\n\n-- 3. RLS(행 수준 보안) 정책 설정\n-- 누구나 읽기 가능\nALTER TABLE public.posts ENABLE ROW LEVEL SECURITY;\nCREATE POLICY \"누구나 게시물 조회 가능\" ON public.posts FOR SELECT USING (true);\n-- 본인 글만 수정/삭제 가능\nCREATE POLICY \"본인 게시물만 수정 가능\" ON public.posts FOR UPDATE USING (auth.uid() = user_id);\nCREATE POLICY \"본인 게시물만 삭제 가능\" ON public.posts FOR DELETE USING (auth.uid() = user_id);\n-- 로그인한 사용자만 작성 가능\nCREATE POLICY \"로그인 사용자만 작성 가능\" ON public.posts FOR INSERT WITH CHECK (auth.uid() = user_id);\n\n-- 4. 자동 updated_at 갱신 트리거\nCREATE OR REPLACE FUNCTION update_updated_at()\nRETURNS TRIGGER AS $$\nBEGIN NEW.updated_at = NOW(); RETURN NEW; END;\n$$ LANGUAGE plpgsql;\nCREATE TRIGGER set_updated_at BEFORE UPDATE ON public.posts\nFOR EACH ROW EXECUTE FUNCTION update_updated_at();"
   }
 }
       `;
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 2. 에러 해결사
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "error") {
       prompt = `
 ${toneDirective}
@@ -219,63 +209,75 @@ ${toneDirective}
 
 에러 내용: "${idea}"
 
+반드시 아래 규칙을 따르세요:
+1. 모든 내용은 한국어로 작성하세요.
+2. 에러 원인을 일상적인 비유를 들어 설명하세요. (예: "마치 편의점에서 존재하지 않는 상품 바코드를 찍으려는 것과 같아요")
+3. 해결 방법은 1단계, 2단계, 3단계로 나눠서 설명하세요.
+4. Cursor AI에게 전달할 프롬프트는 복붙해서 바로 쓸 수 있도록 구체적으로 작성하세요.
+
 아래 JSON 형식으로만 답변하세요:
 {
-  "cause": "뭐가 꼬인 건지 페르소나 말투로 일상 비유를 들어 설명 (2-3문장)",
-  "solution": "비전공자도 따라 할 수 있게 단계별로 어떻게 고치면 되는지 페르소나 말투로 가이드 (3-4문장)",
-  "prompt": "Cursor나 코딩 AI에게 이 문제를 해결해달라고 복붙할 최적의 디버깅 프롬프트 문장 (한글, 1-2문장)"
+  "cause": "에러 원인을 일상적인 비유를 들어 2-3문장으로 쉽게 설명",
+  "solution": "1단계: [첫 번째 할 일]\\n2단계: [두 번째 할 일]\\n3단계: [세 번째 할 일]",
+  "prompt": "Cursor AI 채팅창에 그대로 복붙할 수 있는 구체적인 한국어 디버깅 프롬프트 (예: '다음 에러가 발생했어. [에러내용]. 이 에러의 원인을 찾아서 수정해줘. 수정 후 동일한 에러가 다시 발생하지 않도록 방어 코드도 추가해줘.')"
 }
       `;
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 3. 프롬프트 리파이너
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "prompt") {
       prompt = `
 ${toneDirective}
 
 당신은 최고 수준의 프롬프트 엔지니어입니다.
-사용자가 입력한 러프한 프롬프트를 AI 코딩 툴(Cursor, v0 등)이 가장 잘 알아듣는 엔지니어링 품질로 업그레이드하세요.
+사용자가 입력한 러프한 프롬프트를 v0.dev, bolt.new, Cursor AI가 가장 잘 알아듣는 엔지니어링 품질로 업그레이드하세요.
+
+반드시 아래 규칙을 따르세요:
+1. 개선된 프롬프트는 한국어로 작성하세요.
+2. 역할(Role), 기술스택(Stack), 제약조건(Constraints), 출력포맷(Output Format)을 명시하세요.
+3. UI 관련이면 색상/레이아웃/반응형/한국어 지원을 반드시 포함하세요.
+4. 기능 관련이면 에러처리/로딩상태/성공메시지를 반드시 포함하세요.
 
 원본 프롬프트: "${idea}"
 
 아래 JSON 형식으로만 답변해주세요:
 {
   "original": "원본 입력 그대로",
-  "improved": "역할(Role), 제약 조건(Constraints), 출력 포맷(Output), 기술 스택 지정까지 완벽하게 가미된 고도화 프롬프트 (한글)"
+  "improved": "역할/기술스택/제약조건/출력포맷이 모두 포함된 고도화 프롬프트 (한국어, 복붙해서 바로 쓸 수 있는 수준)"
 }
       `;
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 4. 목 데이터 생성기
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "mock") {
       prompt = `
-기획 주제를 기반으로 프론트엔드에 즉시 사용할 수 있는 고품질 목업 JSON 데이터를 생성하세요.
+기획 주제를 기반으로 프론트엔드에 즉시 사용할 수 있는 고품질 한국어 목업 JSON 데이터를 생성하세요.
 기획 주제: "${idea}"
 
-반드시 아래 구조를 따르세요. mockData 배열 안에 샘플 객체가 5~8개 들어가야 합니다.
-각 객체에는 id, 제목, 설명, 가격/날짜 등 주제에 맞는 현실적인 필드를 포함하세요.
+반드시 아래 규칙을 따르세요:
+1. 모든 텍스트 데이터는 한국어로 작성하세요.
+2. 이름은 실제 한국 이름처럼 (김민준, 이서연 등), 주소는 한국 주소처럼 작성하세요.
+3. mockData 배열 안에 샘플 객체가 6~8개 들어가야 합니다.
+4. 각 객체에는 id, 제목, 설명, 가격/날짜 등 주제에 맞는 현실적인 필드를 포함하세요.
+5. 가격은 원화(10000, 25000 등)로 표시하세요.
 
 {
   "mockData": [
-    { "id": 1, "title": "샘플 1", "description": "설명", "price": 10000, "createdAt": "2025-01-15" },
-    { "id": 2, "title": "샘플 2", "description": "설명", "price": 25000, "createdAt": "2025-01-16" }
+    { "id": 1, "title": "한국어 샘플 제목 1", "description": "한국어 설명", "price": 10000, "author": "김민준", "createdAt": "2025-01-15" },
+    { "id": 2, "title": "한국어 샘플 제목 2", "description": "한국어 설명", "price": 25000, "author": "이서연", "createdAt": "2025-01-16" }
   ]
 }
       `;
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 5. 커밋 메시지 메이커
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "commit") {
       prompt = `
 개발자가 작업한 내용을 바탕으로 Conventional Commits 규칙(feat:, fix:, refactor:, docs:, style:, chore:)에 부합하는 세련된 영어 커밋 메시지를 작성하세요.
 
 작업 내용: "${idea}"
+
+규칙:
+1. 타입(feat/fix 등) 선택이 정확해야 합니다.
+2. 제목은 50자 이내로 간결하게 작성하세요.
+3. 동사는 현재형으로 시작하세요. (add, fix, update, remove 등)
 
 아래 JSON 형식으로만 답변하세요:
 {
@@ -284,9 +286,6 @@ ${toneDirective}
       `;
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 6. 가이드 대화 (비JSON)
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     else if (type === "guide") {
       useJson = false;
       const lessonMatch = idea.match(/\[레슨:\s*(.+?)\]/);
@@ -303,7 +302,10 @@ ${toneDirective}
 학생이 현재 보고 있는 레슨: "${lessonTitle || "일반 질문"}"
 대화 내용: ${questionOnly}
 
-위 페르소나 말투로 한국어 3-5문장으로 답변해주세요.
+반드시 아래 규칙을 따르세요:
+1. 위 페르소나 말투로 한국어 3-5문장으로 답변하세요.
+2. 어려운 개발 용어는 일상적인 비유로 설명하세요.
+3. 구체적인 다음 행동 지침을 포함하세요.
       `;
     } else {
       return NextResponse.json(
@@ -312,10 +314,8 @@ ${toneDirective}
       );
     }
 
-    // ── Groq 호출 ──
     const result = await callGroq(prompt, useJson);
 
-    // guide 타입은 텍스트 그대로 반환
     if (type === "guide") {
       return NextResponse.json({
         success: true,
@@ -324,14 +324,10 @@ ${toneDirective}
       });
     }
 
-    // ── JSON 파싱 (안정성 강화) ──
     let cleanedText = result.text
       .replace(/```json/g, "")
       .replace(/```/g, "")
-      .replace(
-        /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g,
-        " "
-      )
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, " ")
       .trim();
 
     const jsonMatch = cleanedText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
@@ -351,17 +347,13 @@ ${toneDirective}
         fixTarget = fixTarget.substring(0, cutPoint + 1);
         parsed = JSON.parse(fixTarget);
       } catch {
-        throw new Error(
-          "AI의 출력 데이터를 규격화된 객체로 전환하는 데 실패했습니다."
-        );
+        throw new Error("AI의 출력 데이터를 규격화된 객체로 전환하는 데 실패했습니다.");
       }
     }
 
-    // mock 데이터 가공
     if (type === "mock") {
       const mockArray =
-        parsed?.mockData ||
-        (Array.isArray(parsed) ? parsed : [parsed]);
+        parsed?.mockData || (Array.isArray(parsed) ? parsed : [parsed]);
       return NextResponse.json({
         success: true,
         data: { jsonCode: JSON.stringify(mockArray, null, 2) },
@@ -374,6 +366,7 @@ ${toneDirective}
       data: parsed,
       model: result.model,
     });
+
   } catch (error: any) {
     console.error("API 상세 오류:", error);
     return NextResponse.json(

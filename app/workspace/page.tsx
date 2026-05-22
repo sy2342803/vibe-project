@@ -78,6 +78,55 @@ function MoonIcon() {
   );
 }
 
+// ── 로딩 단계 애니메이션 컴포넌트 ──
+function LoadingSteps({ isDark }: { isDark: boolean }) {
+  const steps = [
+    { icon: "🔍", text: "아이디어 분석 중..." },
+    { icon: "🧠", text: "핵심 기능 설계 중..." },
+    { icon: "📋", text: "기획서 초안 작성 중..." },
+    { icon: "✨", text: "AI 치트키 프롬프트 생성 중..." },
+    { icon: "🎉", text: "마무리 다듬는 중..." },
+  ];
+
+  const [currentStep, setCurrentStep] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentStep((prev) => (prev + 1) % steps.length);
+    }, 1500);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className="w-full max-w-sm space-y-2">
+      <div className={`w-full h-2 rounded-full overflow-hidden ${isDark ? "bg-white/10" : "bg-slate-200"}`}>
+        <div
+          className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full transition-all duration-1000"
+          style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+        />
+      </div>
+      <div className={`flex items-center justify-center gap-2 text-sm font-bold ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+        <span className="text-lg">{steps[currentStep].icon}</span>
+        <span>{steps[currentStep].text}</span>
+      </div>
+      <div className="flex justify-center gap-2 pt-2">
+        {steps.map((_, i) => (
+          <div
+            key={i}
+            className={`h-1.5 rounded-full transition-all duration-500 ${
+              i === currentStep
+                ? "w-6 bg-blue-500"
+                : i < currentStep
+                ? isDark ? "w-1.5 bg-white/30" : "w-1.5 bg-slate-300"
+                : isDark ? "w-1.5 bg-white/10" : "w-1.5 bg-slate-200"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── AI 코멘트 버튼 + 결과 컴포넌트 ──
 function AiCommentBox({
   sectionKey, sectionLabel, content, tone, isDark, comment, onRequest, onClose,
@@ -128,6 +177,24 @@ function AiCommentBox({
   );
 }
 
+// ── 에러 토스트 컴포넌트 ──
+function ErrorToast({ message, onClose, isDark }: { message: string; onClose: () => void; isDark: boolean }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 5000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-2xl border text-sm font-bold transition-all animate-fadeIn ${
+      isDark ? "bg-red-950 border-red-500/30 text-red-300" : "bg-red-50 border-red-200 text-red-700"
+    }`}>
+      <span className="text-lg">⚠️</span>
+      <span>{message}</span>
+      <button onClick={onClose} className="ml-2 opacity-60 hover:opacity-100 text-xs">✕</button>
+    </div>
+  );
+}
+
 export default function Workspace() {
   const [theme, setTheme] = useState<Theme>("light");
   const [mentorTone, setMentorTone] = useState<MentorTone>("kind");
@@ -169,6 +236,7 @@ export default function Workspace() {
   const [commitLoading, setCommitLoading] = useState(false);
 
   const [aiComment, setAiComment] = useState<AiComment | null>(null);
+  const [errorToast, setErrorToast] = useState<string | null>(null);
 
   const reportRef = useRef<HTMLDivElement>(null);
 
@@ -199,7 +267,7 @@ export default function Workspace() {
 
   const handleMainSubmit = async () => {
     if (!idea.trim() || idea.trim().length < 10) return;
-    loading || setLoading(true);
+    setLoading(true);
     setPlanData(null);
     setAiComment(null);
     try {
@@ -209,23 +277,29 @@ export default function Workspace() {
         body: JSON.stringify({ idea, type: "plan", platform: selectedPlatform, bm: selectedBM, tone: mentorTone }),
       });
       const json = await res.json();
-      if (json.success || json.data) {
-        const targetData = json.data || json;
-        const newPlan: PlanData = {
-          ...targetData,
-          id: Date.now().toString(),
-          timestamp: new Date().toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
-          idea, platform: selectedPlatform, bm: selectedBM,
-        };
-        const updatedHistory = [newPlan, ...historyList];
-        setHistoryList(updatedHistory);
-        setPlanData(newPlan);
-        localStorage.setItem("vibe-history", JSON.stringify(updatedHistory));
-        setCurrentStep(2);
+      if (!res.ok || !json.success) {
+        throw new Error(json?.error || "기획서 생성에 실패했습니다.");
       }
-    } catch (e) {
+      const targetData = json.data || json;
+      const newPlan: PlanData = {
+        ...targetData,
+        id: Date.now().toString(),
+        timestamp: new Date().toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }),
+        idea, platform: selectedPlatform, bm: selectedBM,
+      };
+      const updatedHistory = [newPlan, ...historyList];
+      setHistoryList(updatedHistory);
+      setPlanData(newPlan);
+      localStorage.setItem("vibe-history", JSON.stringify(updatedHistory));
+      setCurrentStep(2);
+    } catch (e: any) {
       console.error(e);
-      alert("기획서 빌드 중 에러가 발생했습니다.");
+      const msg = e?.message || "";
+      if (msg.includes("rate") || msg.includes("429") || msg.includes("limit")) {
+        setErrorToast("지금 요청이 잠깐 몰렸어요! 5~10초 후 다시 시도해주세요. 🙏");
+      } else {
+        setErrorToast(`기획서 생성 중 오류가 발생했습니다: ${msg}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -274,14 +348,19 @@ export default function Workspace() {
         body: JSON.stringify({ idea: payload, type: toolType, tone: mentorTone }),
       });
       const json = await res.json();
-      if (json.success) {
-        if (toolType === "error") setErrorResult(json.data);
-        if (toolType === "prompt") setRefinerResult(json.data);
-        if (toolType === "mock") setMockResult(json.data.jsonCode || JSON.stringify(json.data, null, 2));
-        if (toolType === "commit") setCommitResult(json.data.message);
+      if (!res.ok || !json.success) {
+        throw new Error(json?.error || "AI 요청에 실패했습니다.");
       }
-    } catch (e) { console.error(e); }
-    finally { setErrorLoading(false); setRefinerLoading(false); setMockLoading(false); setCommitLoading(false); }
+      if (toolType === "error") setErrorResult(json.data);
+      if (toolType === "prompt") setRefinerResult(json.data);
+      if (toolType === "mock") setMockResult(json.data.jsonCode || JSON.stringify(json.data, null, 2));
+      if (toolType === "commit") setCommitResult(json.data.message);
+    } catch (e: any) {
+      console.error(e);
+      setErrorToast(e?.message || "도구 실행 중 오류가 발생했습니다.");
+    } finally {
+      setErrorLoading(false); setRefinerLoading(false); setMockLoading(false); setCommitLoading(false);
+    }
   };
 
   const handleAiCommentRequest = async (sectionKey: string, content: string, sectionLabel: string) => {
@@ -346,7 +425,7 @@ export default function Workspace() {
       doc.save(`VIBE_하루만에_실현하는_기획서.pdf`);
     } catch (error) {
       console.error(error);
-      alert("PDF 생성 중 오류가 발생했습니다.");
+      setErrorToast("PDF 생성 중 오류가 발생했습니다.");
     } finally {
       setPdfDownloading(false);
     }
@@ -357,6 +436,12 @@ export default function Workspace() {
 
   return (
     <main className={`relative min-h-screen antialiased transition-colors duration-300 ${isDark ? "bg-[#0a0a16] text-white" : "bg-slate-50 text-slate-900"}`}>
+
+      {/* 에러 토스트 */}
+      {errorToast && (
+        <ErrorToast message={errorToast} onClose={() => setErrorToast(null)} isDark={isDark} />
+      )}
+
       {isDark && (
         <div className="pointer-events-none fixed inset-0 z-0">
           <div className="absolute -left-20 -top-20 h-[500px] w-[500px] rounded-full bg-blue-600/10 blur-[100px]" />
@@ -398,7 +483,10 @@ export default function Workspace() {
           </div>
           <div className="space-y-2">
             {historyList.length === 0 ? (
-              <p className="text-xs text-slate-400 text-center py-8">작성된 기획이 없습니다.</p>
+              <div className="flex flex-col items-center justify-center py-10 gap-3">
+                <span className="text-4xl">📭</span>
+                <p className="text-xs text-slate-400 text-center">아직 작성된 기획이 없어요!{"\n"}첫 번째 아이디어를 입력해보세요.</p>
+              </div>
             ) : (
               historyList.map((item) => (
                 <div key={item.id} onClick={() => handleSelectHistoryItem(item)}
@@ -483,13 +571,28 @@ export default function Workspace() {
           {/* 콘텐츠 */}
           <div className="px-6 py-10 relative z-10 flex-1">
 
+            {/* 로딩 */}
             {loading && (
-              <div className="my-20 flex flex-col items-center justify-center gap-4 text-center">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-                <h3 className="text-lg font-bold">인공지능 튜터가 당신의 아이디어를 1초 만에 조립하고 있어요! 🛠️</h3>
-                <p className="text-sm text-slate-400">
-                  {mentorTone === "kind" ? "비전공자도 하루 만에 구현할 수 있는 가장 쉬운 방식의 뼈대를 짜는 중입니다." : "형편없는 주석 달기 전에 알아서 굴러가게 아키텍처 뽑고 있으니까 잠깐만 기다려 봐."}
-                </p>
+              <div className="my-20 flex flex-col items-center justify-center gap-6 text-center px-4">
+                <div className="relative">
+                  <div className="h-20 w-20 animate-spin rounded-full border-4 border-blue-500/20 border-t-blue-500" />
+                  <div className="absolute inset-0 flex items-center justify-center text-3xl animate-pulse">
+                    🚀
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <h3 className={`text-xl font-black ${isDark ? "text-white" : "text-slate-800"}`}>
+                    {mentorTone === "kind"
+                      ? "천사 멘토가 설계도를 그리고 있어요! ✨"
+                      : "선배가 억지로 기획서 뽑아주는 중... 🦊"}
+                  </h3>
+                  <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>
+                    {mentorTone === "kind"
+                      ? "비전공자도 하루 만에 구현할 수 있는 뼈대를 짜는 중이에요!"
+                      : "형편없는 아이디어지만... 그래도 최선을 다해주마."}
+                  </p>
+                </div>
+                <LoadingSteps isDark={isDark} />
               </div>
             )}
 
@@ -531,8 +634,8 @@ export default function Workspace() {
                     rows={5}
                     className={`w-full rounded-2xl border p-4 text-base leading-relaxed outline-none focus:ring-2 focus:ring-blue-500 transition ${isDark ? "bg-white/5 border-white/10 text-white placeholder:text-slate-500" : "bg-white border-slate-200 text-slate-900 placeholder:text-slate-400"}`} />
                   <div className="flex items-center justify-between text-xs text-slate-400 mt-1">
-                    <span>자세하게 적을수록 AI가 더 쉽고 친절하게 기획서를 완성해 줍니다.</span>
-                    <button type="button" onClick={handleMainSubmit} disabled={idea.trim().length < 10}
+                    <span>{idea.length < 10 ? `${10 - idea.length}자 더 입력하면 시작할 수 있어요!` : "✅ 준비됐어요! 버튼을 눌러보세요!"}</span>
+                    <button type="button" onClick={handleMainSubmit} disabled={idea.trim().length < 10 || loading}
                       className="px-6 py-3 rounded-xl text-sm font-black bg-blue-600 text-white hover:bg-blue-700 transition disabled:bg-slate-300 disabled:cursor-not-allowed">
                       하루 만에 완성하는 설계도 뽑기 →
                     </button>
@@ -575,7 +678,7 @@ export default function Workspace() {
                   </div>
                   <button type="button" onClick={handleDownloadPDF} disabled={pdfDownloading}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${isDark ? "bg-white text-slate-900 hover:opacity-90" : "bg-slate-900 text-white hover:bg-slate-700"}`}>
-                    {pdfDownloading ? "설계도 다운로드 중..." : "📄 내 기획안 한눈에 보기 (PDF 저장)"}
+                    {pdfDownloading ? "⏳ 다운로드 중..." : "📄 내 기획안 PDF 저장"}
                   </button>
                 </div>
 
@@ -584,9 +687,7 @@ export default function Workspace() {
                     <span className={`text-xs font-black block mb-1.5 ${mentorTone === "kind" ? isDark ? "text-blue-400" : "text-blue-600" : isDark ? "text-amber-400" : "text-amber-600"}`}>
                       {mentorTone === "kind" ? "😇 인공지능 튜터의 초속성 마인드셋 레슨:" : "🦊 한마디만 하겠는데 귀담아들어라:"}
                     </span>
-                    <p className={`text-xs leading-relaxed font-bold ${isDark ? "text-slate-100" : "text-slate-800"}`}>
-                      {mentorTone === "kind" ? planData.summary : "솔직히 기획 수준이 갈 길이 멀긴 한데, 그래도 뼈대는 갖췄으니까 눈 똑바로 뜨고 확인해봐."}
-                    </p>
+                    <p className={`text-xs leading-relaxed font-bold ${isDark ? "text-slate-100" : "text-slate-800"}`}>{planData.summary}</p>
                   </div>
                 )}
 
@@ -757,7 +858,7 @@ export default function Workspace() {
                   )}
                   {step3Tab === "db" && (
                     <div className="space-y-3">
-                      <div className="text-[11px] text-emerald-500 font-bold mb-2">💡 사용법: 데이터 보관함 스크립트입니다.</div>
+                      <div className="text-[11px] text-emerald-500 font-bold mb-2">💡 사용법: 데이터 보관함 스크립트입니다. Supabase SQL Editor에 붙여넣으세요!</div>
                       <div className="flex justify-between items-start gap-4 p-4 border rounded-xl bg-slate-900 text-emerald-400 font-mono text-xs overflow-x-auto">
                         <pre className="whitespace-pre-wrap flex-1">{planData.prompts?.db || "정보를 준비하고 있습니다."}</pre>
                         <button type="button" onClick={() => triggerCopy(planData.prompts?.db)} className="shrink-0 text-xs px-2.5 py-1.5 font-bold border rounded bg-slate-800 text-white">
@@ -768,14 +869,11 @@ export default function Workspace() {
                   )}
                 </div>
 
-                {/* ✅ 주의사항 박스 (딱 하나만!) */}
                 <div className={`p-4 rounded-xl border border-amber-500/20 text-xs leading-relaxed ${isDark ? "bg-amber-500/5 text-white/60" : "bg-amber-50 text-slate-600"}`}>
                   <span className="font-bold text-amber-600 block mb-1">⚠️ 복붙 전 꼭 읽어두면 주머니와 멘탈에 좋은 가이드</span>
                   AI 도구 화면에 빨간 불이 아니라{" "}
                   <strong className="text-amber-600">노란색 느낌표 경고(Warning)</strong>
                   가 뜨는 건 컴퓨터가 혼자 잔소리하는 거라 가볍게 무시하셔도 완벽하게 작동합니다!
-                  또한 무료 범위 내에서 카드를 등록하라는 알림이 오더라도 당황하지 마시고 창을 닫은 후
-                  무료 등급으로 계속 사용하시면 지갑 방어가 완료됩니다.
                 </div>
 
                 <div className="flex justify-between items-center pt-4">
@@ -830,11 +928,11 @@ export default function Workspace() {
                         <div className={`p-4 rounded-xl text-xs space-y-3 border ${isDark ? "bg-black/40 border-white/5" : "bg-slate-50 border-slate-200"}`}>
                           <div>
                             <strong className="text-red-500 font-bold block">{mentorTone === "kind" ? "💡 컴퓨터가 화난 진짜 이유:" : "🦊 선배의 팩트 폭행:"}</strong>
-                            <p className="mt-1 leading-relaxed">{mentorTone === "kind" ? errorResult.cause : "어디서 이상한 데서 코드 끊어먹고 가져왔냐? 비어 있는 정보 바구니에서 혼자 멋대로 아이템 꺼내 쓰려고 하니까 크래시가 난 거잖아."}</p>
+                            <p className="mt-1 leading-relaxed">{errorResult.cause}</p>
                           </div>
                           <div>
                             <strong className="text-emerald-500 font-bold block">🛠️ 이렇게 고쳐보세요:</strong>
-                            <p className="mt-1 leading-relaxed">{mentorTone === "kind" ? errorResult.solution : "거기 코드 창 열고 데이터 검사하는 if문 한 줄만 추가해. 모르면 아래 치트키 복사해서 Cursor에 그대로 먹여."}</p>
+                            <p className="mt-1 leading-relaxed">{errorResult.solution}</p>
                           </div>
                           <div className={`pt-2 border-t flex justify-between items-center ${isDark ? "border-white/10" : "border-slate-200"}`}>
                             <span className="text-[10px] text-slate-400">AI에게 줄 치트키: <strong>{errorResult.prompt}</strong></span>
@@ -919,6 +1017,18 @@ export default function Workspace() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* 기획서 없을 때 빈 상태 화면 */}
+            {!loading && !planData && currentStep !== 1 && (
+              <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+                <span className="text-6xl">🗺️</span>
+                <h3 className={`text-lg font-black ${isDark ? "text-white" : "text-slate-800"}`}>아직 기획서가 없어요!</h3>
+                <p className={`text-sm ${isDark ? "text-slate-400" : "text-slate-500"}`}>먼저 Step 1에서 아이디어를 입력하고 설계도를 뽑아보세요!</p>
+                <button onClick={() => setCurrentStep(1)} className="mt-2 px-6 py-3 rounded-xl text-sm font-black bg-blue-600 text-white hover:bg-blue-700 transition">
+                  💡 아이디어 입력하러 가기
+                </button>
               </div>
             )}
           </div>

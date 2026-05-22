@@ -920,7 +920,7 @@ export default function Workspace() {
     : null;
 
   return (
-    <main className={`brand-page relative min-h-screen antialiased transition-colors duration-300 ${isDark ? "brand-dark text-white" : "text-slate-900"}`}>
+    <main className={`brand-page brand-workspace relative min-h-screen antialiased transition-colors duration-300 ${isDark ? "brand-dark text-white" : "text-slate-900"}`}>
 
       {toast && (
         <StatusToast
@@ -945,12 +945,12 @@ export default function Workspace() {
             <Link href="/" className="brand-wordmark text-lg font-black tracking-tighter bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent hover:opacity-80 transition">
               VIBE PROJECT
             </Link>
-            <Link href="/learn" className={`hidden text-xs font-bold px-3 py-1.5 rounded-xl transition sm:inline-flex ${isDark ? "bg-white/5 text-slate-300 hover:bg-white/10" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
+            <Link href="/learn" className={`brand-pill-secondary hidden items-center justify-center rounded-full px-4 py-2 text-xs font-bold transition sm:inline-flex ${isDark ? "bg-white/5 text-slate-300 hover:bg-white/10" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
               학습 센터
             </Link>
             <Link
               href="/today-route"
-              className={`hidden rounded-xl px-3 py-1.5 text-xs font-bold transition lg:inline-flex ${
+              className={`brand-pill-secondary hidden items-center justify-center rounded-full px-4 py-2 text-xs font-bold transition lg:inline-flex ${
                 isDark
                   ? "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
                   : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
@@ -961,7 +961,7 @@ export default function Workspace() {
 
             <Link
               href="/error-helper"
-              className={`hidden rounded-xl px-3 py-1.5 text-xs font-bold transition lg:inline-flex ${
+              className={`brand-pill-secondary hidden items-center justify-center rounded-full px-4 py-2 text-xs font-bold transition lg:inline-flex ${
                 isDark
                   ? "bg-red-500/10 text-red-300 hover:bg-red-500/20"
                   : "bg-red-50 text-red-700 hover:bg-red-100"
@@ -1035,10 +1035,10 @@ export default function Workspace() {
         </div>
       )}
 
-      <div className="flex mx-auto max-w-7xl min-h-[calc(100vh-69px)]">
+      <div className="workspace-shell mx-auto flex max-w-7xl gap-5 px-4 py-5 md:px-6">
 
         {/* 사이드바 */}
-        <aside className={`w-64 border-r shrink-0 hidden md:block p-4 overflow-y-auto space-y-4 ${isDark ? "border-white/5 bg-[#0d0d1f]" : "border-slate-200 bg-white"}`}>
+        <aside className={`workspace-sidebar hidden w-72 shrink-0 overflow-y-auto p-4 md:sticky md:top-[92px] md:block ${isDark ? "border-white/5 bg-[#0d0d1f]" : "border-slate-200 bg-white"}`}>
           <HistoryArchive
             historyList={historyList}
             selectedId={planData?.id}
@@ -1052,11 +1052,11 @@ export default function Workspace() {
         </aside>
 
         {/* 메인 */}
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className="workspace-main flex min-w-0 flex-1 flex-col">
 
           {/* 진척도 */}
           {planData && (
-            <div className={`border-b text-xs py-2.5 px-6 transition-colors ${isDark ? "bg-blue-950/20 border-white/5" : "bg-blue-50 border-slate-200"}`}>
+            <div className={`workspace-progress border-b px-6 py-2.5 text-xs transition-colors ${isDark ? "bg-blue-950/20 border-white/5" : "bg-blue-50 border-slate-200"}`}>
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <div className="flex items-center gap-2 font-bold">
                   <span>앱 빌드 완성도:</span>
@@ -1083,7 +1083,7 @@ export default function Workspace() {
           )}
 
           {/* 스텝 탭 */}
-          <div className={`border-b sticky top-[58px] z-40 transition-colors md:top-[69px] ${isDark ? "border-white/5 bg-[#0f0f23]" : "border-slate-200 bg-white shadow-sm"}`}>
+          <div className={`workspace-tabs sticky top-[58px] z-40 border-b transition-colors md:top-[69px] ${isDark ? "border-white/5 bg-[#0f0f23]" : "border-slate-200 bg-white shadow-sm"}`}>
             <div className="flex items-center gap-4 overflow-x-auto px-4 py-3 md:px-6 md:py-3.5">
               {[
                 { step: 1, label: "1. 아이디어 입력" },
@@ -1108,7 +1108,7 @@ export default function Workspace() {
           </div>
 
           {/* 콘텐츠 */}
-          <div className="relative z-10 flex-1 px-4 py-8 md:px-6 md:py-10">
+          <div className="workspace-content relative z-10 flex-1 px-4 py-8 md:px-6 md:py-10">
 
             {/* 로딩 */}
             {loading && (
@@ -1137,7 +1137,7 @@ export default function Workspace() {
 
             {/* ── STEP 1 ── */}
             {!loading && currentStep === 1 && (
-              <div className="space-y-8 animate-fadeIn">
+              <div className="workspace-step-card space-y-8 animate-fadeIn">
                 <div className={`border-b pb-4 ${isDark ? "border-white/10" : "border-slate-200"}`}>
                   <h1 className="text-2xl font-black md:text-3xl tracking-tight">아이디어를 실행 가능한 기획서로 바꿔보세요</h1>
                   <p className={`text-sm mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>서비스 형태와 수익 모델을 고른 뒤, 만들고 싶은 내용을 편하게 적어주세요.</p>
@@ -1207,7 +1207,7 @@ export default function Workspace() {
 
             {/* ── STEP 2 ── */}
             {!loading && planData && currentStep === 2 && (
-              <div className="space-y-6 animate-fadeIn">
+              <div className="workspace-step-card space-y-6 animate-fadeIn">
                 <div className={`border-b pb-4 flex flex-wrap items-center justify-between gap-4 ${isDark ? "border-white/10" : "border-slate-200"}`}>
                   <div>
                     <h1 className="text-2xl font-black md:text-3xl tracking-tight">2. 기획 요건 확인</h1>
@@ -1434,7 +1434,7 @@ export default function Workspace() {
 
             {/* ── STEP 3 ── */}
             {!loading && planData && currentStep === 3 && (
-              <div className="space-y-6 animate-fadeIn">
+              <div className="workspace-step-card space-y-6 animate-fadeIn">
                 <div className={`border-b pb-4 ${isDark ? "border-white/10" : "border-slate-200"}`}>
                   <h1 className="text-2xl font-black md:text-3xl tracking-tight">3. AI 도구용 복사 프롬프트</h1>
                   <p className={`text-sm mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>
@@ -1599,7 +1599,7 @@ export default function Workspace() {
 
             {/* ── STEP 4 ── */}
             {!loading && planData && currentStep === 4 && (
-              <div className="space-y-6 animate-fadeIn">
+              <div className="workspace-step-card space-y-6 animate-fadeIn">
                 <div className={`border-b pb-4 ${isDark ? "border-white/10" : "border-slate-200"}`}>
                   <h1 className="text-2xl font-black md:text-3xl tracking-tight">4. 개발 도움 도구</h1>
                   <p className={`text-sm mt-1 ${isDark ? "text-slate-400" : "text-slate-500"}`}>

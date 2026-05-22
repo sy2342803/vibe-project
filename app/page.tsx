@@ -563,75 +563,71 @@ export default function Home() {
               <button type="button" onClick={() => handleThemeChange("light")} className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${!isDark ? "bg-white text-blue-600 shadow-sm" : "text-white/40 hover:bg-white/10"}`}><SunIcon /></button>
               <button type="button" onClick={() => handleThemeChange("dark")} className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${isDark ? "bg-white/10 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}><MoonIcon /></button>
             </div>
-            <a href="/workspace" className={`brand-pill-primary hidden rounded-full px-4 py-1.5 text-xs font-bold tracking-wide transition md:block lg:px-5 lg:py-2.5 ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-900/40 hover:opacity-90" : "bg-blue-600 text-white shadow-lg shadow-blue-200 hover:bg-blue-700"}`}>START</a>
+            <a href="/workspace" className={`brand-pill-primary hidden rounded-full px-4 py-1.5 text-xs font-bold tracking-wide transition md:inline-flex lg:px-5 lg:py-2.5 ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-900/40 hover:opacity-90" : "bg-blue-600 text-white shadow-lg shadow-blue-200 hover:bg-blue-700"}`}>START</a>
           </div>
         </div>
       </nav>
 
       {/* 히어로 */}
-      <section className="relative z-10 overflow-hidden px-4 pb-24 pt-16 text-center md:pb-28 md:pt-36">
+      <section className="relative z-10 overflow-hidden px-4 pb-20 pt-12 md:pb-24 md:pt-24">
         <FloatingParticles isDark={isDark} />
-        <div className="anim-fiu"><div className={`brand-kicker mb-6 ${isDark ? "border-white/10 bg-white/5 text-white/70" : ""}`}><span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-blue-400" : "bg-blue-500"}`} />비전공자를 위한 실전 바이브 코딩 가이드</div></div>
-        <h1 className="brand-title mx-auto max-w-5xl text-4xl font-extrabold leading-[1.1] tracking-tight md:text-7xl anim-fiu" style={{ animationDelay: ".1s" }}>오늘 떠오른 아이디어,<br /><span className={isDark ? "bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent" : "text-blue-600"}>오늘 안에 완성하세요.</span></h1>
-        <p className={`brand-lead mx-auto mt-6 max-w-2xl text-xl font-medium md:text-2xl anim-fiu ${isDark ? "text-white/55" : "text-slate-500"}`} style={{ animationDelay: ".2s" }}>비전공자도, 1일 만에, 진짜 프로토타입.</p>
-        <p className={`mx-auto mt-3 max-w-2xl text-base leading-relaxed anim-fiu ${isDark ? "text-white/35" : "text-slate-400"}`} style={{ animationDelay: ".3s" }}>AI와 대화하며 개발하는 바이브 코딩을 가장 쉽게 배웁니다.<br className="hidden md:block" />당신의 첫 웹앱, 여기서 시작하세요.</p>
+        <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)]">
+          <div className="text-left">
+            <div className="anim-fiu"><div className={`brand-kicker mb-6 ${isDark ? "border-white/10 bg-white/5 text-white/70" : ""}`}><span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-blue-400" : "bg-blue-500"}`} />비전공자를 위한 실전 바이브 코딩 가이드</div></div>
+            <h1 className="brand-title max-w-4xl text-5xl font-extrabold tracking-tight md:text-7xl lg:text-[88px] anim-fiu" style={{ animationDelay: ".1s" }}>
+              오늘 떠오른
+              <br />
+              <span className={isDark ? "text-lime-200" : "text-blue-600"}>아이디어</span>
+            </h1>
+            <p className={`brand-lead mt-7 max-w-2xl text-xl font-medium md:text-2xl anim-fiu ${isDark ? "text-white/70" : "text-slate-700"}`} style={{ animationDelay: ".2s" }}>비전공자도, 1일 만에, 진짜 프로토타입.</p>
+            <p className={`mt-3 max-w-xl text-base leading-relaxed anim-fiu ${isDark ? "text-white/55" : "text-slate-600"}`} style={{ animationDelay: ".3s" }}>
+              AI와 대화하며 기획서, 프롬프트, 에러 해결 루트까지 한 번에 정리합니다.
+            </p>
 
-        {/* 버튼: A안 + 스크롤 힌트 */}
-        <div className="mt-10 flex flex-col items-center gap-4 anim-fiu" style={{ animationDelay: ".4s" }}>
-          <a href="/workspace" className={`brand-pill-primary group rounded-full px-8 py-3 text-sm font-bold uppercase tracking-wide transition sm:text-base hover:scale-[1.02] ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-xl hover:opacity-90" : "bg-blue-600 text-white shadow-xl hover:bg-blue-700"}`}>
-            바이브 코딩 시작하기 <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-          </a>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <a
-              href="/today-route"
-              className={`brand-pill-secondary rounded-full px-6 py-3 text-sm font-bold transition hover:scale-[1.02] ${
-                isDark
-                  ? "border border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
-                  : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-              }`}
-            >
-              ✅ 오늘 완성 루트 보기
-            </a>
-            <a
-              href="/error-helper"
-              className={`brand-pill-secondary rounded-full px-6 py-3 text-sm font-bold transition hover:scale-[1.02] ${
-                isDark
-                  ? "border border-red-400/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
-                  : "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-              }`}
-            >
-              🧯 에러 번역기 사용하기
-            </a>
-          </div>
-
-          <span className={`text-xs font-medium flex items-center gap-1 ${isDark ? "text-white/25" : "text-slate-300"}`}>
-            <span className="animate-bounce">↓</span> 스크롤하면 15초 데모가 자동 재생돼요
-          </span>
-        </div>
-
-        {/* 채팅 미리보기 */}
-        <div className={`brand-card-strong mx-auto mt-20 max-w-2xl overflow-hidden rounded-[2rem] text-left anim-fiu ${isDark ? "border border-white/10 bg-white/5 shadow-2xl shadow-black/50 backdrop-blur-xl" : "border border-slate-200 bg-white shadow-2xl shadow-slate-200"}`} style={{ animationDelay: ".5s" }}>
-          <div className={`flex items-center gap-2 border-b px-5 py-3 ${isDark ? "border-white/10" : "border-slate-100 bg-slate-50"}`}>
-            <div className="h-2.5 w-2.5 rounded-full bg-red-400" /><div className="h-2.5 w-2.5 rounded-full bg-yellow-400" /><div className="h-2.5 w-2.5 rounded-full bg-green-400" />
-            <span className={`ml-2 text-xs font-semibold uppercase tracking-wider ${isDark ? "text-white/30" : "text-slate-400"}`}>VIBE PROJECT — AI 튜터</span>
-          </div>
-          <div className="space-y-4 p-6">
-            <div className="flex flex-row-reverse gap-3">
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${isDark ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500"}`}>나</div>
-              <div className={`rounded-2xl rounded-tr-sm px-4 py-3 text-sm ${isDark ? "bg-white/10 text-white/80" : "bg-slate-100 text-slate-700"}`}>학교 근처 맛집을 공유하는 앱을 만들고 싶어요.</div>
+            <div className="mt-9 flex flex-col gap-3 anim-fiu sm:flex-row sm:items-center" style={{ animationDelay: ".4s" }}>
+              <a href="/workspace" className={`brand-pill-primary group inline-flex items-center justify-center rounded-full px-8 py-3 text-sm font-bold transition sm:text-base hover:scale-[1.02] ${isDark ? "text-slate-950" : "bg-blue-600 text-white hover:bg-blue-700"}`}>
+                바이브 코딩 시작하기 <span className="ml-1 inline-block transition-transform group-hover:translate-x-1">→</span>
+              </a>
+              <a href="/today-route" className="brand-pill-secondary inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-bold transition hover:scale-[1.02]">
+                오늘 완성 루트
+              </a>
             </div>
-            <div className="flex gap-3">
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${isDark ? "bg-gradient-to-br from-blue-500 to-violet-500" : "bg-blue-600"}`}>AI</div>
-              <div className={`max-w-sm rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-white ${isDark ? "bg-gradient-to-br from-blue-600/80 to-violet-600/80" : "bg-blue-600"}`}>
-                <p className="font-semibold">좋아요! AI에게는 이렇게 요청해보세요.</p>
-                <p className={`mt-2 rounded-xl px-3 py-2 text-xs ${isDark ? "bg-white/10 text-white/80" : "bg-blue-700/50 text-blue-100"}`}>&ldquo;맛집 리스트 웹앱을 React + Tailwind로 만들어줘.&rdquo;</p>
+          </div>
+
+          <div className={`brand-card-strong anim-fiu overflow-hidden p-6 text-left ${isDark ? "border border-white/10 bg-white/5" : "bg-white"}`} style={{ animationDelay: ".5s" }}>
+            <div className="mb-5 flex items-center justify-between">
+              <span className="brand-kicker">1-Day Builder</span>
+              <span className={`rounded-full px-3 py-1 text-xs font-bold ${isDark ? "bg-white/10 text-lime-200" : "bg-slate-100 text-slate-600"}`}>무료 시작</span>
+            </div>
+            <div className="space-y-3">
+              {[
+                { label: "아이디어", value: "맛집 공유 앱", helper: "입력하면 AI가 기능을 정리합니다." },
+                { label: "완성 목표", value: "1일", helper: "기획 → 프롬프트 → 배포 체크" },
+              ].map((row) => (
+                <div key={row.label} className={`rounded-3xl border p-4 ${isDark ? "border-lime-200/20 bg-white/5" : "border-slate-200 bg-white"}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className={`text-xs font-bold ${isDark ? "text-lime-200/70" : "text-slate-500"}`}>{row.label}</p>
+                      <p className={`mt-1 text-2xl font-black ${isDark ? "text-lime-200" : "text-slate-950"}`}>{row.value}</p>
+                    </div>
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-black ${isDark ? "bg-lime-200 text-slate-950" : "bg-[#9fe870] text-slate-950"}`}>✓</div>
+                  </div>
+                  <p className={`mt-3 text-sm ${isDark ? "text-white/55" : "text-slate-500"}`}>{row.helper}</p>
+                </div>
+              ))}
+            </div>
+            <div className={`mt-4 rounded-3xl p-4 ${isDark ? "bg-lime-200 text-slate-950" : "bg-[#e2f6d5] text-slate-950"}`}>
+              <div className="flex items-center justify-between text-sm font-bold">
+                <span>프로토타입 준비도</span>
+                <span>0원 · 4단계</span>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/70">
+                <div className="h-full w-3/4 rounded-full bg-slate-950" />
               </div>
             </div>
-            <div className="flex gap-3">
-              <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${isDark ? "bg-gradient-to-br from-blue-500 to-violet-500" : "bg-blue-600"}`}>AI</div>
-              <div className={`inline-flex items-center rounded-2xl rounded-tl-sm px-4 py-3 text-sm ${isDark ? "bg-white/10 text-white/60" : "bg-slate-100 text-slate-500"}`}><span className="animate-pulse">입력 중...</span></div>
-            </div>
+            <a href="/error-helper" className="brand-pill-secondary mt-4 inline-flex w-full items-center justify-center rounded-full px-6 py-3 text-sm font-bold">
+              에러 번역기도 함께 쓰기
+            </a>
           </div>
         </div>
       </section>

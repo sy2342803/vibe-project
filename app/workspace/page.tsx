@@ -13,6 +13,10 @@ import type {
   Theme,
 } from "@/lib/vibe-types";
 
+import {
+  buildPresentationSummary,
+  buildToolPrompts,
+} from "@/lib/vibe-extra";
 interface AiComment {
   sectionKey: string;
   content: string;
@@ -20,8 +24,15 @@ interface AiComment {
 }
 
 type ToastVariant = "error" | "success" | "info";
-type Step2Tab = "impact" | "features" | "stories" | "screens" | "tips";
-type Step3Tab = "ui" | "ide" | "db";
+type Step2Tab =
+  | "impact"
+  | "features"
+  | "stories"
+  | "screens"
+  | "presentation"
+  | "tips";
+
+type Step3Tab = "ui" | "ide" | "db" | "tools";
 type Step4Tool = "error" | "refiner" | "mock" | "commit";
 
 interface Step3Guide {
@@ -47,6 +58,7 @@ const step2Tabs: { id: Step2Tab; label: string }[] = [
   { id: "features", label: "핵심 기능" },
   { id: "stories", label: "사용 시나리오" },
   { id: "screens", label: "필요한 화면" },
+  { id: "presentation", label: "발표 자료" },
   { id: "tips", label: "무료 배포 팁" },
 ];
 const step4Tools: { id: Step4Tool; title: string }[] = [
@@ -55,7 +67,7 @@ const step4Tools: { id: Step4Tool; title: string }[] = [
   { id: "mock", title: "샘플 데이터" },
   { id: "commit", title: "커밋 메시지" },
 ];
-const step3Guides: Record<Step3Tab, Step3Guide> = {
+const step3Guides: Record<Exclude<Step3Tab, "tools">, Step3Guide> = {
   ui: {
     eyebrow: "v0.dev 또는 Bolt.new",
     title: "화면 초안을 먼저 만듭니다",
@@ -783,8 +795,19 @@ export default function Workspace() {
     }
   };
 
-  const totalChecked = [planData ? true : false, progressDesign, progressCode, progressDeploy].filter(Boolean).length;
+  const totalChecked = [
+    planData ? true : false,
+    progressDesign,
+    progressCode,
+    progressDeploy,
+  ].filter(Boolean).length;
+
   const progressPercent = Math.round((totalChecked / 4) * 100);
+
+  const toolPrompts = planData ? buildToolPrompts(planData) : [];
+  const presentationSummary = planData
+    ? buildPresentationSummary(planData)
+    : null;
 
   return (
     <main className={`relative min-h-screen antialiased transition-colors duration-300 ${isDark ? "bg-[#0a0a16] text-white" : "bg-slate-50 text-slate-900"}`}>
@@ -814,6 +837,27 @@ export default function Workspace() {
             </Link>
             <Link href="/learn" className={`hidden text-xs font-bold px-3 py-1.5 rounded-xl transition sm:inline-flex ${isDark ? "bg-white/5 text-slate-300 hover:bg-white/10" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>
               학습 센터
+            </Link>
+            <Link
+              href="/today-route"
+              className={`hidden rounded-xl px-3 py-1.5 text-xs font-bold transition lg:inline-flex ${
+                isDark
+                  ? "bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                  : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              }`}
+            >
+              오늘 완성 루트
+            </Link>
+
+            <Link
+              href="/error-helper"
+              className={`hidden rounded-xl px-3 py-1.5 text-xs font-bold transition lg:inline-flex ${
+                isDark
+                  ? "bg-red-500/10 text-red-300 hover:bg-red-500/20"
+                  : "bg-red-50 text-red-700 hover:bg-red-100"
+              }`}
+            >
+              에러 번역기
             </Link>
           </div>
           <div className="flex min-w-0 items-center gap-2 sm:gap-4">
@@ -1168,7 +1212,87 @@ export default function Workspace() {
                       </div>
                     </div>
                   )}
+                                    {step2Tab === "presentation" && presentationSummary && (
+                    <div className="space-y-4">
+                      <div className={`rounded-2xl border p-4 ${isDark ? "border-emerald-500/20 bg-emerald-500/5" : "border-emerald-100 bg-emerald-50"}`}>
+                        <span className={`mb-2 block text-xs font-black ${isDark ? "text-emerald-300" : "text-emerald-700"}`}>
+                          🎤 발표/과제용 요약
+                        </span>
+                        <p className={`text-xs leading-relaxed ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                          팀 회의록, 과제 제출 자료, 발표 자료에 바로 옮겨 적기 좋게 정리했습니다.
+                        </p>
+                      </div>
 
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {[
+                          { label: "서비스명", value: presentationSummary.serviceName },
+                          { label: "한 줄 소개", value: presentationSummary.oneLiner },
+                          { label: "문제 상황", value: presentationSummary.problem },
+                          { label: "대상 사용자", value: presentationSummary.target },
+                          { label: "기대 효과", value: presentationSummary.expectedEffect },
+                          { label: "향후 발전 방향", value: presentationSummary.futurePlan },
+                        ].map((item) => (
+                          <div
+                            key={item.label}
+                            className={`rounded-xl border p-4 ${
+                              isDark
+                                ? "border-white/10 bg-black/20"
+                                : "border-slate-200 bg-slate-50"
+                            }`}
+                          >
+                            <span className={`mb-1.5 block text-[10px] font-black uppercase tracking-wider ${isDark ? "text-emerald-300" : "text-emerald-600"}`}>
+                              {item.label}
+                            </span>
+                            <p className={`text-xs leading-relaxed ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                              {item.value}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className={`rounded-xl border p-4 ${isDark ? "border-white/10 bg-black/20" : "border-slate-200 bg-slate-50"}`}>
+                        <span className={`mb-3 block text-[10px] font-black uppercase tracking-wider ${isDark ? "text-emerald-300" : "text-emerald-600"}`}>
+                          핵심 기능 3개
+                        </span>
+                        <ul className="space-y-2">
+                          {presentationSummary.mainFeatures.map((feature, index) => (
+                            <li
+                              key={feature}
+                              className={`flex gap-2 text-xs leading-relaxed ${
+                                isDark ? "text-slate-300" : "text-slate-600"
+                              }`}
+                            >
+                              <span className="font-black text-emerald-500">{index + 1}.</span>
+                              <span>{feature}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className={`rounded-xl border p-4 ${isDark ? "border-emerald-500/20 bg-black/20" : "border-emerald-100 bg-white"}`}>
+                        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? "text-emerald-300" : "text-emerald-600"}`}>
+                            1분 발표 대본
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              triggerCopy(
+                                presentationSummary.oneMinuteScript,
+                                "발표 대본이 복사되었습니다."
+                              )
+                            }
+                            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                          >
+                            대본 복사
+                          </button>
+                        </div>
+                        <p className={`text-xs leading-relaxed ${isDark ? "text-slate-300" : "text-slate-600"}`}>
+                          {presentationSummary.oneMinuteScript}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {step2Tab === "tips" && (
                     <div className="space-y-4 text-xs">
                       <h3 className="text-sm font-black text-amber-500">비전공자 대학생을 위한 0원 배포 가이드</h3>
@@ -1212,11 +1336,26 @@ export default function Workspace() {
                   <button type="button" onClick={() => setStep3Tab("ui")} className={`px-4 py-2 text-xs font-bold border-b-2 transition whitespace-nowrap ${step3Tab === "ui" ? "border-blue-500 text-blue-500" : isDark ? "border-transparent text-slate-400" : "border-transparent text-slate-400 hover:text-slate-700"}`}>1단계: UI 초안</button>
                   <button type="button" onClick={() => setStep3Tab("ide")} className={`px-4 py-2 text-xs font-bold border-b-2 transition whitespace-nowrap ${step3Tab === "ide" ? "border-violet-500 text-violet-500" : isDark ? "border-transparent text-slate-400" : "border-transparent text-slate-400 hover:text-slate-700"}`}>2단계: 기능 연결</button>
                   <button type="button" onClick={() => setStep3Tab("db")} className={`px-4 py-2 text-xs font-bold border-b-2 transition whitespace-nowrap ${step3Tab === "db" ? "border-emerald-500 text-emerald-500" : isDark ? "border-transparent text-slate-400" : "border-transparent text-slate-400 hover:text-slate-700"}`}>3단계: 데이터 설계</button>
+                                    <button
+                    type="button"
+                    onClick={() => setStep3Tab("tools")}
+                    className={`whitespace-nowrap border-b-2 px-4 py-2 text-xs font-bold transition ${
+                      step3Tab === "tools"
+                        ? "border-pink-500 text-pink-500"
+                        : isDark
+                        ? "border-transparent text-slate-400"
+                        : "border-transparent text-slate-400 hover:text-slate-700"
+                    }`}
+                  >
+                    4단계: 도구별 프롬프트
+                  </button>
                 </div>
 
                 <MentorTipBox tone={mentorTone} isDark={isDark} />
 
-                <ToolGuidePanel guide={step3Guides[step3Tab]} isDark={isDark} />
+                {step3Tab !== "tools" && (
+                  <ToolGuidePanel guide={step3Guides[step3Tab]} isDark={isDark} />
+                )}
 
                 <div className={`p-5 rounded-2xl border min-h-[200px] ${isDark ? "bg-white/5 border-white/10" : "bg-white border-slate-200"}`}>
                   {step3Tab === "ui" && (
@@ -1260,6 +1399,67 @@ export default function Workspace() {
                           {copiedText === planData.prompts?.db ? "복사 완료!" : "코드 전체 복사"}
                         </button>
                       </div>
+                    </div>
+                  )}
+                                    {step3Tab === "tools" && (
+                    <div className="space-y-4">
+                      <div className="text-[11px] font-bold text-pink-500">
+                        v0, Lovable, Cursor, Replit, ChatGPT에 바로 붙여넣을 수 있는 맞춤 프롬프트입니다.
+                      </div>
+
+                      {toolPrompts.map((item) => (
+                        <div
+                          key={item.tool}
+                          className={`rounded-xl border p-4 ${
+                            isDark
+                              ? "border-white/10 bg-black/20"
+                              : "border-slate-200 bg-slate-50"
+                          }`}
+                        >
+                          <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${
+                                  isDark
+                                    ? "bg-white/10 text-white"
+                                    : "bg-white text-slate-700"
+                                }`}>
+                                  {item.tool}
+                                </span>
+                                <span className="text-[10px] font-black text-pink-500">
+                                  {item.badge}
+                                </span>
+                              </div>
+                              <p className={`mt-2 text-xs leading-relaxed ${
+                                isDark ? "text-slate-400" : "text-slate-500"
+                              }`}>
+                                {item.description}
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                triggerCopy(
+                                  item.prompt,
+                                  `${item.tool}용 프롬프트가 복사되었습니다.`
+                                )
+                              }
+                              className="shrink-0 rounded-lg bg-pink-600 px-3 py-2 text-xs font-bold text-white hover:bg-pink-700"
+                            >
+                              복사
+                            </button>
+                          </div>
+
+                          <pre className={`max-h-60 overflow-auto whitespace-pre-wrap rounded-xl p-4 text-xs leading-relaxed ${
+                            isDark
+                              ? "bg-neutral-950 text-slate-300"
+                              : "bg-white text-slate-700"
+                          }`}>
+                            {item.prompt}
+                          </pre>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

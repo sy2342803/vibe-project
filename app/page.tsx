@@ -555,7 +555,14 @@ export default function Home() {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6 md:py-4">
           <a href="#top" className={`text-base font-extrabold tracking-tight md:text-lg ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent"}`}>VIBE PROJECT</a>
           <div className="hidden items-center gap-6 md:flex">
-            {[{ href: "/learn", label: "학습하기" }, { href: "#features", label: "학습 기능" }, { href: "#how", label: "사용 방법" }, { href: "#faq", label: "FAQ" }].map((l) => (
+            {[
+              { href: "/learn", label: "학습하기" },
+              { href: "/today-route", label: "오늘 완성 루트" },
+              { href: "/error-helper", label: "에러 번역기" },
+              { href: "#features", label: "학습 기능" },
+              { href: "#how", label: "사용 방법" },
+              { href: "#faq", label: "FAQ" },
+            ].map((l) => (
               <a key={l.href} href={l.href} className={`text-sm font-medium transition ${isDark ? "text-white/60 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}>{l.label}</a>
             ))}
           </div>
@@ -590,6 +597,30 @@ export default function Home() {
           <a href="/workspace" className={`group rounded-full px-8 py-3 text-sm font-bold uppercase tracking-wide transition sm:text-base hover:scale-[1.02] ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-xl hover:opacity-90" : "bg-blue-600 text-white shadow-xl hover:bg-blue-700"}`}>
             바이브 코딩 시작하기 <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
           </a>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <a
+              href="/today-route"
+              className={`rounded-full px-6 py-3 text-sm font-bold transition hover:scale-[1.02] ${
+                isDark
+                  ? "border border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
+                  : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+              }`}
+            >
+              ✅ 오늘 완성 루트 보기
+            </a>
+            <a
+              href="/error-helper"
+              className={`rounded-full px-6 py-3 text-sm font-bold transition hover:scale-[1.02] ${
+                isDark
+                  ? "border border-red-400/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
+                  : "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+              }`}
+            >
+              🧯 에러 번역기 사용하기
+            </a>
+          </div>
+
           <span className={`text-xs font-medium flex items-center gap-1 ${isDark ? "text-white/25" : "text-slate-300"}`}>
             <span className="animate-bounce">↓</span> 스크롤하면 15초 데모가 자동 재생돼요
           </span>
@@ -780,8 +811,10 @@ export default function Home() {
           {isDark ? <><div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-blue-600/30 blur-3xl" /><div className="absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-violet-600/30 blur-3xl" /></> : <><div className="absolute -left-20 -top-20 h-56 w-56 rounded-full bg-blue-200/30 blur-3xl" /><div className="absolute -right-20 -bottom-20 h-56 w-56 rounded-full bg-violet-200/30 blur-3xl" /></>}
           <h2 className="relative text-3xl font-extrabold tracking-tight text-white md:text-5xl">당신의 첫 웹앱,<br /><span className={isDark ? "bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent" : "text-blue-400"}>여기서 시작하세요.</span></h2>
           <p className="relative mx-auto mt-5 max-w-xl text-lg leading-8 text-white/60">막연했던 아이디어를 바이브 코딩으로 현실로 만들어보세요.</p>
-          <div className="relative mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <div className="relative mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:flex-wrap">
             <a href="/workspace" className={`group rounded-xl px-8 py-4 text-base font-semibold text-white transition hover:scale-[1.02] ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 shadow-2xl hover:opacity-90" : "bg-blue-600 shadow-lg hover:bg-blue-500"}`}>무료로 시작하기 <span className="inline-block transition-transform group-hover:translate-x-1">→</span></a>
+            <a href="/today-route" className="rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-8 py-4 text-base font-semibold text-emerald-100 transition hover:bg-emerald-500/20 hover:scale-[1.02]">오늘 완성 루트</a>
+            <a href="/error-helper" className="rounded-xl border border-red-400/30 bg-red-500/10 px-8 py-4 text-base font-semibold text-red-100 transition hover:bg-red-500/20 hover:scale-[1.02]">에러 번역기</a>
             <a href="/learn" className="rounded-xl border border-white/10 bg-white/5 px-8 py-4 text-base font-semibold text-white/70 transition hover:bg-white/10 hover:scale-[1.02]">바이브 코딩 배우기</a>
           </div>
         </div>

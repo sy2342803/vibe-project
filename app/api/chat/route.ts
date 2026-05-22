@@ -1,121 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_KEY = process.env.GEMINI_API_KEY;
+// ── API 키 배열 (3개) ──
+const API_KEYS = [
+  process.env.GROQ_API_KEY_1,
+  process.env.GROQ_API_KEY_2,
+  process.env.GROQ_API_KEY_3,
+].filter(Boolean) as string[];
 
-// ── 모델 조회 ──
-async function getAvailableModels() {
-  if (!API_KEY) {
-    throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
+const MODEL = "llama-3.3-70b-versatile";
+
+// 키 순환 인덱스
+let currentKeyIndex = 0;
+
+// ── Groq 호출 함수 (키 순환 방식) ──
+async function callGroq(
+  prompt: string,
+  useJson: boolean = true
+): Promise<{ text: string; model: string }> {
+  if (API_KEYS.length === 0) {
+    throw new Error("설정된 GROQ API 키가 없습니다. .env.local을 확인하세요.");
   }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models?key=${API_KEY}`
-  );
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`모델 목록 조회 실패: ${res.status} - ${errorText}`);
-  }
-
-  const data = await res.json();
-
-  const models =
-    data.models
-      ?.filter((model: any) =>
-        (model.supportedGenerationMethods || []).includes("generateContent")
-      )
-      .map((model: any) => model.name.replace("models/", "")) || [];
-
-  return models;
-}
-
-// ── 선호 모델 순서 ──
-async function getPreferredModels() {
-  const availableModels = await getAvailableModels();
-
-  const preferredOrder = [
-    "gemini-2.5-flash-preview-04-17",
-    "gemini-2.5-pro-preview-05-06",
-    "gemini-2.0-flash",
-    "gemini-2.0-flash-001",
-    "gemini-2.0-flash-lite",
-    "gemini-flash-latest",
-    "gemini-pro-latest",
-  ];
-
-  const matched = preferredOrder.filter((model) =>
-    availableModels.includes(model)
-  );
-
-  if (matched.length > 0) return matched;
-
-  const fallback = availableModels.filter((model: string) =>
-    model.includes("gemini")
-  );
-
-  if (fallback.length === 0) {
-    throw new Error("사용 가능한 Gemini 모델을 찾지 못했습니다.");
-  }
-
-  return fallback;
-}
-
-// ── 모델 호출 ──
-async function tryModel(model: string, prompt: string, useJson: boolean = true) {
-  if (!API_KEY) {
-    throw new Error("GEMINI_API_KEY가 설정되지 않았습니다.");
-  }
+  const apiKey = API_KEYS[currentKeyIndex];
+  currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
 
   const body: any = {
-    contents: [{ parts: [{ text: prompt }] }],
+    model: MODEL,
+    messages: [{ role: "user", content: prompt }],
+    temperature: 0.7,
+    max_tokens: 4096,
   };
 
   if (useJson) {
-    body.generationConfig = {
-      responseMimeType: "application/json",
-    };
+    body.response_format = { type: "json_object" };
   }
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }
-  );
+  const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
 
   const data = await res.json();
 
   if (!res.ok) {
-    throw new Error(data?.error?.message || `모델 호출 실패: ${model}`);
+    throw new Error(
+      data?.error?.message || `Groq API 호출 실패: ${res.status}`
+    );
   }
 
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const text = data?.choices?.[0]?.message?.content;
+  if (!text) throw new Error("Groq 응답 텍스트가 비어 있습니다.");
 
-  if (!text) {
-    throw new Error(`${model} 응답 텍스트가 비어 있습니다.`);
-  }
-
-  return { text, model };
-}
-
-// ── 폴백 순회 호출기 ──
-async function callGemini(prompt: string, useJson: boolean = true) {
-  const modelsToTry = await getPreferredModels();
-  const errors: string[] = [];
-
-  for (const model of modelsToTry) {
-    try {
-      return await tryModel(model, prompt, useJson);
-    } catch (error: any) {
-      errors.push(`${model}: ${error.message}`);
-    }
-  }
-
-  throw new Error(
-    `사용 가능한 모델 호출에 모두 실패했습니다.\n${errors.join("\n")}`
-  );
+  return { text, model: data?.model || MODEL };
 }
 
 // ──────────────────────────────────────────────
@@ -134,7 +75,6 @@ function getToneDirective(tone: string): string {
     `;
   }
 
-  // 기본: 천사 멘토
   return `
 [페르소나 지시]
 당신은 세상에서 가장 다정하고 인내심 많은 '천사 코치 멘토'입니다.
@@ -146,20 +86,15 @@ function getToneDirective(tone: string): string {
   `;
 }
 
-// ── GET ──
+// ── GET (상태 확인용) ──
 export async function GET() {
-  try {
-    const models = await getAvailableModels();
-    const preferredModels = await getPreferredModels();
-
-    return NextResponse.json({ success: true, models, preferredModels });
-  } catch (error: any) {
-    console.error("모델 조회 오류:", error);
-    return NextResponse.json(
-      { success: false, error: error.message || "모델 조회 중 오류가 발생했습니다." },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json({
+    success: true,
+    model: MODEL,
+    provider: "Groq",
+    keysActive: API_KEYS.length,
+    status: "정상 작동 중",
+  });
 }
 
 // ──────────────────────────────────────────────
@@ -167,7 +102,6 @@ export async function GET() {
 // ──────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    // ✅ [수정] tone을 구조분해에 포함
     const { idea, type, platform, bm, tone } = await req.json();
 
     const toneDirective = getToneDirective(tone || "kind");
@@ -357,7 +291,10 @@ ${toneDirective}
       useJson = false;
       const lessonMatch = idea.match(/\[레슨:\s*(.+?)\]/);
       const lessonTitle = lessonMatch ? lessonMatch[1] : null;
-      const questionOnly = idea.replace(/\[레슨:.*?\]/g, "").replace(/이전 대화:/g, "").trim();
+      const questionOnly = idea
+        .replace(/\[레슨:.*?\]/g, "")
+        .replace(/이전 대화:/g, "")
+        .trim();
 
       prompt = `
 ${toneDirective}
@@ -375,8 +312,8 @@ ${toneDirective}
       );
     }
 
-    // ── 모델 호출 ──
-    const result = await callGemini(prompt, useJson);
+    // ── Groq 호출 ──
+    const result = await callGroq(prompt, useJson);
 
     // guide 타입은 텍스트 그대로 반환
     if (type === "guide") {
@@ -391,10 +328,12 @@ ${toneDirective}
     let cleanedText = result.text
       .replace(/```json/g, "")
       .replace(/```/g, "")
-      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, " ")
+      .replace(
+        /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g,
+        " "
+      )
       .trim();
 
-    // 배열 또는 객체 모두 지원
     const jsonMatch = cleanedText.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
     if (!jsonMatch) {
       throw new Error("JSON 형식 응답을 파싱하지 못했습니다.");
@@ -405,7 +344,6 @@ ${toneDirective}
       parsed = JSON.parse(jsonMatch[0]);
     } catch {
       try {
-        // 잘린 JSON 복구 시도
         let fixTarget = jsonMatch[0];
         const lastBrace = fixTarget.lastIndexOf("}");
         const lastBracket = fixTarget.lastIndexOf("]");
@@ -413,13 +351,17 @@ ${toneDirective}
         fixTarget = fixTarget.substring(0, cutPoint + 1);
         parsed = JSON.parse(fixTarget);
       } catch {
-        throw new Error("AI의 출력 데이터를 규격화된 객체로 전환하는 데 실패했습니다.");
+        throw new Error(
+          "AI의 출력 데이터를 규격화된 객체로 전환하는 데 실패했습니다."
+        );
       }
     }
 
     // mock 데이터 가공
     if (type === "mock") {
-      const mockArray = parsed?.mockData || (Array.isArray(parsed) ? parsed : [parsed]);
+      const mockArray =
+        parsed?.mockData ||
+        (Array.isArray(parsed) ? parsed : [parsed]);
       return NextResponse.json({
         success: true,
         data: { jsonCode: JSON.stringify(mockArray, null, 2) },

@@ -6,17 +6,20 @@ type Theme = "light" | "dark";
 
 // ── 스크롤 애니메이션 훅 ──
 function useScrollReveal() {
-  const ref = useRef<HTMLDivElement>(null);
+  const [node, setNode] = useState<HTMLElement | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+
   useEffect(() => {
+    if (!node) return;
     const observer = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) { setIsVisible(true); observer.disconnect(); } },
       { threshold: 0.1 }
     );
-    if (ref.current) observer.observe(ref.current);
+    observer.observe(node);
     return () => observer.disconnect();
-  }, []);
-  return { ref, isVisible };
+  }, [node]);
+
+  return [setNode, isVisible] as const;
 }
 
 // ── 숫자 카운트업 훅 ──
@@ -67,18 +70,33 @@ const faqs = [
 ];
 
 // ── 스토리 장면 데이터 ──
+const STORY_DURATION_SECONDS = 15;
+const ORIGINAL_STORY_SECONDS = 23;
+const storyMs = (ms: number) => Math.round(ms * STORY_DURATION_SECONDS / ORIGINAL_STORY_SECONDS);
 const STORY_SCENES = [
-  { type: "story-intro" as const, duration: 4000, label: "시작" },
-  { type: "zoom-in" as const, duration: 1500, label: "접속" },
-  { type: "step" as const, duration: 3000, label: "아이디어", step: { num: 1, icon: "💡", title: "아이디어 입력", typeText: "학교 근처 맛집 공유 + 빈자리 확인 앱", accent: "blue" } },
-  { type: "step" as const, duration: 3000, label: "기획서", step: { num: 2, icon: "📋", title: "AI 기획서 생성", typeText: "기능 4개, 화면 4개, 시나리오 5개 자동 완성!", accent: "violet" } },
-  { type: "step" as const, duration: 3000, label: "치트키", step: { num: 3, icon: "✨", title: "복사 → 붙여넣기", typeText: "v0 · Cursor · Supabase 프롬프트 복사 완료", accent: "emerald" } },
-  { type: "step" as const, duration: 3000, label: "배포!", step: { num: 4, icon: "🚀", title: "전세계 배포 완료!", typeText: "my-app.vercel.app · 비용 0원", accent: "amber" } },
-  { type: "zoom-out" as const, duration: 1500, label: "완성" },
-  { type: "story-outro" as const, duration: 4000, label: "끝!" },
+  { type: "story-intro" as const, duration: storyMs(4000), label: "시작" },
+  { type: "zoom-in" as const, duration: storyMs(1500), label: "접속" },
+  { type: "step" as const, duration: storyMs(3000), label: "아이디어", step: { num: 1, icon: "💡", title: "아이디어 입력", typeText: "학교 근처 맛집 공유 + 빈자리 확인 앱", accent: "blue" } },
+  { type: "step" as const, duration: storyMs(3000), label: "기획서", step: { num: 2, icon: "📋", title: "AI 기획서 생성", typeText: "기능 4개, 화면 4개, 시나리오 5개 자동 완성!", accent: "violet" } },
+  { type: "step" as const, duration: storyMs(3000), label: "치트키", step: { num: 3, icon: "✨", title: "복사 → 붙여넣기", typeText: "v0 · Cursor · Supabase 프롬프트 복사 완료", accent: "emerald" } },
+  { type: "step" as const, duration: storyMs(3000), label: "배포!", step: { num: 4, icon: "🚀", title: "전세계 배포 완료!", typeText: "my-app.vercel.app · 비용 0원", accent: "amber" } },
+  { type: "zoom-out" as const, duration: storyMs(1500), label: "완성" },
+  { type: "story-outro" as const, duration: storyMs(4000), label: "끝!" },
 ];
 
 const TOTAL_STORY_DURATION = STORY_SCENES.reduce((sum, s) => sum + s.duration, 0);
+const seeded = (seed: number) => {
+  const value = Math.sin(seed * 999) * 10000;
+  return value - Math.floor(value);
+};
+const floatingParticleItems = Array.from({ length: 25 }, (_, i) => ({
+  id: i,
+  size: 2 + seeded(i + 1) * 3,
+  x: seeded(i + 11) * 100,
+  y: seeded(i + 21) * 100,
+  duration: 15 + seeded(i + 31) * 20,
+  delay: seeded(i + 41) * 10,
+}));
 
 // ── 아이콘 ──
 function SunIcon() {
@@ -91,14 +109,9 @@ function MoonIcon() {
 // ── 플로팅 파티클 ──
 function FloatingParticles({ isDark }: { isDark: boolean }) {
   if (!isDark) return null;
-  const particles = Array.from({ length: 25 }, (_, i) => ({
-    id: i, size: 2 + Math.random() * 3,
-    x: Math.random() * 100, y: Math.random() * 100,
-    duration: 15 + Math.random() * 20, delay: Math.random() * 10,
-  }));
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {particles.map((p) => (
+      {floatingParticleItems.map((p) => (
         <div key={p.id} className="absolute rounded-full bg-white/10 animate-float-particle"
           style={{ width: p.size, height: p.size, left: `${p.x}%`, top: `${p.y}%`, animationDuration: `${p.duration}s`, animationDelay: `${p.delay}s` }} />
       ))}
@@ -136,20 +149,22 @@ function AutoStoryPlayer({ isDark }: { isDark: boolean }) {
   // 화면에 보이면 자동 시작
   useEffect(() => {
     if (!isInView || hasPlayed) return;
-    setHasPlayed(true);
-    setIsPlaying(true);
+    queueMicrotask(() => {
+      setHasPlayed(true);
+      setIsPlaying(true);
 
-    let current = 0;
-    timerRef.current = setInterval(() => {
-      current += 80;
-      if (current >= TOTAL_STORY_DURATION) {
-        setElapsed(TOTAL_STORY_DURATION);
-        setIsPlaying(false);
-        stopTimer();
-      } else {
-        setElapsed(current);
-      }
-    }, 80);
+      let current = 0;
+      timerRef.current = setInterval(() => {
+        current += 80;
+        if (current >= TOTAL_STORY_DURATION) {
+          setElapsed(TOTAL_STORY_DURATION);
+          setIsPlaying(false);
+          stopTimer();
+        } else {
+          setElapsed(current);
+        }
+      }, 80);
+    });
   }, [isInView, hasPlayed, stopTimer]);
 
   useEffect(() => () => stopTimer(), [stopTimer]);
@@ -217,7 +232,7 @@ function AutoStoryPlayer({ isDark }: { isDark: boolean }) {
 
   const { index: sceneIndex, scene: currentScene, progress: sceneProgress } = getCurrentScene(elapsed);
   const overallProgress = (elapsed / TOTAL_STORY_DURATION) * 100;
-  const currentTime = `0:${String(Math.floor((elapsed / TOTAL_STORY_DURATION) * 23)).padStart(2, "0")}`;
+  const currentTime = `0:${String(Math.floor((elapsed / TOTAL_STORY_DURATION) * STORY_DURATION_SECONDS)).padStart(2, "0")}`;
 
   const getTypedText = (fullText: string, progress: number) => fullText.slice(0, Math.floor(fullText.length * Math.min(progress * 2, 1)));
 
@@ -253,8 +268,8 @@ function AutoStoryPlayer({ isDark }: { isDark: boolean }) {
               ))}
             </div>
             <div style={{ opacity: Math.min(textDelay, 1) }}>
-              <p className={`text-sm md:text-base font-bold ${isDark ? "text-white/80" : "text-slate-700"}`}>"아이디어는 있는데..."</p>
-              <p className={`text-xs md:text-sm mt-1 ${isDark ? "text-white/40" : "text-slate-400"}`}>"코딩을 몰라서 만들 수가 없어 😢"</p>
+              <p className={`text-sm md:text-base font-bold ${isDark ? "text-white/80" : "text-slate-700"}`}>&ldquo;아이디어는 있는데...&rdquo;</p>
+              <p className={`text-xs md:text-sm mt-1 ${isDark ? "text-white/40" : "text-slate-400"}`}>&ldquo;코딩을 몰라서 만들 수가 없어 😢&rdquo;</p>
             </div>
             <div className="flex justify-center gap-2 flex-wrap" style={{ opacity: Math.min(bubbleDelay, 1) }}>
               {["외주 300만원?!", "6개월 공부?", "포기할까..."].map((text, i) => (
@@ -393,7 +408,7 @@ function AutoStoryPlayer({ isDark }: { isDark: boolean }) {
         <div className="flex gap-1.5">
           <div className="h-3 w-3 rounded-full bg-[#ff5f57]" /><div className="h-3 w-3 rounded-full bg-[#febc2e]" /><div className="h-3 w-3 rounded-full bg-[#28c840]" />
         </div>
-        <div className={`flex-1 text-center text-[10px] font-semibold tracking-wider ${isDark ? "text-white/20" : "text-slate-300"}`}>VIBE — 하루 만에 앱 만드는 23초 스토리</div>
+        <div className={`flex-1 text-center text-[10px] font-semibold tracking-wider ${isDark ? "text-white/20" : "text-slate-300"}`}>VIBE — 하루 만에 앱 만드는 15초 스토리</div>
         <div className="flex items-center gap-1.5">
           {isPlaying && <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-red-400" : "bg-red-500"}`} />}
           <span className={`text-[9px] font-bold ${isPlaying ? isDark ? "text-red-400/60" : "text-red-500/60" : isDark ? "text-white/20" : "text-slate-300"}`}>{isPlaying ? "REC" : "DEMO"}</span>
@@ -441,7 +456,7 @@ function AutoStoryPlayer({ isDark }: { isDark: boolean }) {
             <div className={`absolute inset-y-0 left-0 rounded-full transition-all duration-100 ${isDark ? "bg-gradient-to-r from-blue-500 via-violet-500 to-emerald-500" : "bg-gradient-to-r from-blue-500 to-violet-500"}`} style={{ width: `${overallProgress}%` }} />
             <div className={`absolute top-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 shadow-lg opacity-0 group-hover:opacity-100 transition-all ${isDark ? "border-violet-500" : "border-blue-500"}`} style={{ left: `calc(${overallProgress}% - 7px)` }} />
           </div>
-          <span className={`text-[10px] font-mono font-bold w-7 shrink-0 text-right ${isDark ? "text-white/30" : "text-slate-400"}`}>0:23</span>
+          <span className={`text-[10px] font-mono font-bold w-7 shrink-0 text-right ${isDark ? "text-white/30" : "text-slate-400"}`}>0:15</span>
         </div>
 
         {/* 버튼들 */}
@@ -473,7 +488,7 @@ function AutoStoryPlayer({ isDark }: { isDark: boolean }) {
 
           <div className="hidden sm:flex items-center gap-1.5">
             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? "bg-white/5 text-white/20" : "bg-slate-100 text-slate-400"}`}>AUTO</span>
-            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? "bg-white/5 text-white/20" : "bg-slate-100 text-slate-400"}`}>23s</span>
+            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${isDark ? "bg-white/5 text-white/20" : "bg-slate-100 text-slate-400"}`}>15s</span>
           </div>
 
           <a href="/workspace" className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all hover:scale-105 ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-500/20" : "bg-blue-600 text-white shadow-md shadow-blue-200 hover:bg-blue-700"}`}>
@@ -493,26 +508,28 @@ export default function Home() {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("vibe-theme");
-    if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
+    queueMicrotask(() => {
+      const savedTheme = localStorage.getItem("vibe-theme");
+      if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme);
+    });
   }, []);
 
   const isDark = theme === "dark";
   const handleThemeChange = (nextTheme: Theme) => { setTheme(nextTheme); localStorage.setItem("vibe-theme", nextTheme); };
 
-  const statsReveal = useScrollReveal();
-  const videoReveal = useScrollReveal();
-  const compareReveal = useScrollReveal();
-  const featuresReveal = useScrollReveal();
-  const howReveal = useScrollReveal();
-  const forYouReveal = useScrollReveal();
-  const faqReveal = useScrollReveal();
-  const ctaReveal = useScrollReveal();
+  const [statsRef, statsVisible] = useScrollReveal();
+  const [videoRef, videoVisible] = useScrollReveal();
+  const [compareRef, compareVisible] = useScrollReveal();
+  const [featuresRef, featuresVisible] = useScrollReveal();
+  const [howRef, howVisible] = useScrollReveal();
+  const [forYouRef, forYouVisible] = useScrollReveal();
+  const [faqRef, faqVisible] = useScrollReveal();
+  const [ctaRef, ctaVisible] = useScrollReveal();
 
-  const stat1 = useCountUp(1, statsReveal.isVisible, 1200);
-  const stat2 = useCountUp(0, statsReveal.isVisible, 1200);
-  const stat3 = useCountUp(16, statsReveal.isVisible, 1800);
-  const stat4 = useCountUp(4, statsReveal.isVisible, 1500);
+  const stat1 = useCountUp(1, statsVisible, 1200);
+  const stat2 = useCountUp(0, statsVisible, 1200);
+  const stat3 = useCountUp(16, statsVisible, 1800);
+  const stat4 = useCountUp(4, statsVisible, 1500);
 
   const revealClass = (v: boolean) => `transition-all duration-700 ${v ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`;
 
@@ -574,7 +591,7 @@ export default function Home() {
             바이브 코딩 시작하기 <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
           </a>
           <span className={`text-xs font-medium flex items-center gap-1 ${isDark ? "text-white/25" : "text-slate-300"}`}>
-            <span className="animate-bounce">↓</span> 스크롤하면 23초 데모가 자동 재생돼요
+            <span className="animate-bounce">↓</span> 스크롤하면 15초 데모가 자동 재생돼요
           </span>
         </div>
 
@@ -593,7 +610,7 @@ export default function Home() {
               <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${isDark ? "bg-gradient-to-br from-blue-500 to-violet-500" : "bg-blue-600"}`}>AI</div>
               <div className={`max-w-sm rounded-2xl rounded-tl-sm px-4 py-3 text-sm text-white ${isDark ? "bg-gradient-to-br from-blue-600/80 to-violet-600/80" : "bg-blue-600"}`}>
                 <p className="font-semibold">좋아요! AI에게는 이렇게 요청해보세요.</p>
-                <p className={`mt-2 rounded-xl px-3 py-2 text-xs ${isDark ? "bg-white/10 text-white/80" : "bg-blue-700/50 text-blue-100"}`}>"맛집 리스트 웹앱을 React + Tailwind로 만들어줘."</p>
+                <p className={`mt-2 rounded-xl px-3 py-2 text-xs ${isDark ? "bg-white/10 text-white/80" : "bg-blue-700/50 text-blue-100"}`}>&ldquo;맛집 리스트 웹앱을 React + Tailwind로 만들어줘.&rdquo;</p>
               </div>
             </div>
             <div className="flex gap-3">
@@ -605,8 +622,8 @@ export default function Home() {
       </section>
 
       {/* 통계 */}
-      <section ref={statsReveal.ref} className={`relative z-10 border-y py-14 ${isDark ? "border-white/5 bg-white/[0.02]" : "border-slate-100 bg-white"}`}>
-        <div className={`mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 md:grid-cols-4 ${revealClass(statsReveal.isVisible)}`}>
+      <section ref={statsRef} className={`relative z-10 border-y py-14 ${isDark ? "border-white/5 bg-white/[0.02]" : "border-slate-100 bg-white"}`}>
+        <div className={`mx-auto grid max-w-6xl grid-cols-2 gap-8 px-6 md:grid-cols-4 ${revealClass(statsVisible)}`}>
           {[{ value: `${stat1}일`, label: "프로토타입 완성 목표" }, { value: `${stat2}줄`, label: "사전 코딩 지식 필요 없음" }, { value: `${stat3}개`, label: "단계별 학습 레슨" }, { value: `${stat4}단계`, label: "아이디어에서 배포까지" }].map((s) => (
             <div key={s.label} className="text-center">
               <div className={`text-3xl font-extrabold tracking-tight md:text-4xl ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "text-slate-900"}`}>{s.value}</div>
@@ -617,15 +634,15 @@ export default function Home() {
       </section>
 
       {/* 자동재생 스토리 데모 */}
-      <section id="demo" ref={videoReveal.ref} className={`relative z-10 px-6 py-24 overflow-hidden ${isDark ? "" : "bg-slate-50"}`}>
+      <section id="demo" ref={videoRef} className={`relative z-10 px-6 py-24 overflow-hidden ${isDark ? "" : "bg-slate-50"}`}>
         {isDark && <div className="pointer-events-none absolute inset-0"><div className="absolute left-1/4 top-0 h-[300px] w-[300px] rounded-full bg-blue-600/5 blur-[100px]" /><div className="absolute right-1/4 bottom-0 h-[300px] w-[300px] rounded-full bg-violet-600/5 blur-[100px]" /></div>}
-        <div className={`mx-auto max-w-4xl relative ${revealClass(videoReveal.isVisible)}`}>
+        <div className={`mx-auto max-w-4xl relative ${revealClass(videoVisible)}`}>
           <div className="mx-auto max-w-2xl text-center mb-14">
             <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold mb-4 ${isDark ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-red-50 text-red-500 border border-red-200"}`}>
               <span className="relative flex h-2 w-2"><span className="animate-ping absolute h-full w-full rounded-full bg-red-500 opacity-75" /><span className="relative rounded-full h-2 w-2 bg-red-500" /></span>
               자동 재생 스토리 데모
             </div>
-            <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">비전공자의 하루를 <span className={isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "text-blue-600"}>23초로 압축</span></h2>
+            <h2 className="text-3xl font-extrabold tracking-tight md:text-4xl">비전공자의 하루를 <span className={isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "text-blue-600"}>15초로 압축</span></h2>
             <p className={`mt-4 text-base leading-7 ${isDark ? "text-white/40" : "text-slate-500"}`}>고민에서 시작해, 하루 만에 나만의 서비스를 완성하는 여정을 확인해보세요.</p>
           </div>
           <AutoStoryPlayer isDark={isDark} />
@@ -640,8 +657,8 @@ export default function Home() {
       </section>
 
       {/* Before / After */}
-      <section ref={compareReveal.ref} className="relative z-10 px-6 py-24">
-        <div className={`mx-auto max-w-5xl ${revealClass(compareReveal.isVisible)}`}>
+      <section ref={compareRef} className="relative z-10 px-6 py-24">
+        <div className={`mx-auto max-w-5xl ${revealClass(compareVisible)}`}>
           <div className="mx-auto max-w-2xl text-center mb-16">
             <p className={`text-sm font-bold uppercase tracking-[0.2em] ${isDark ? "text-violet-400" : "text-blue-600"}`}>Before & After</p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">바이브코딩이 바꾸는 것들</h2>
@@ -666,8 +683,8 @@ export default function Home() {
       </section>
 
       {/* 기능 */}
-      <section id="features" ref={featuresReveal.ref} className={`relative z-10 px-6 py-24 ${isDark ? "" : "bg-slate-50"}`}>
-        <div className={`mx-auto max-w-6xl ${revealClass(featuresReveal.isVisible)}`}>
+      <section id="features" ref={featuresRef} className={`relative z-10 px-6 py-24 ${isDark ? "" : "bg-slate-50"}`}>
+        <div className={`mx-auto max-w-6xl ${revealClass(featuresVisible)}`}>
           <div className="mx-auto max-w-2xl text-center">
             <p className={`text-sm font-bold uppercase tracking-[0.2em] ${isDark ? "text-violet-400" : "text-blue-600"}`}>Features</p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">단순한 도구가 아닙니다.<br /><span className={isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : ""}>당신의 첫 바이브 코딩 튜터입니다.</span></h2>
@@ -692,8 +709,8 @@ export default function Home() {
       </section>
 
       {/* 사용 방법 */}
-      <section id="how" ref={howReveal.ref} className="relative z-10 px-6 py-24">
-        <div className={`mx-auto max-w-6xl ${revealClass(howReveal.isVisible)}`}>
+      <section id="how" ref={howRef} className="relative z-10 px-6 py-24">
+        <div className={`mx-auto max-w-6xl ${revealClass(howVisible)}`}>
           <div className="mx-auto max-w-2xl text-center">
             <p className={`text-sm font-bold uppercase tracking-[0.2em] ${isDark ? "text-violet-400" : "text-blue-600"}`}>How It Works</p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">4단계면 충분합니다.</h2>
@@ -714,8 +731,8 @@ export default function Home() {
       </section>
 
       {/* 대상 */}
-      <section ref={forYouReveal.ref} className={`relative z-10 px-6 py-24 ${isDark ? "" : "bg-slate-50"}`}>
-        <div className={`mx-auto max-w-6xl ${revealClass(forYouReveal.isVisible)}`}>
+      <section ref={forYouRef} className={`relative z-10 px-6 py-24 ${isDark ? "" : "bg-slate-50"}`}>
+        <div className={`mx-auto max-w-6xl ${revealClass(forYouVisible)}`}>
           <div className="mx-auto max-w-2xl text-center">
             <p className={`text-sm font-bold uppercase tracking-[0.2em] ${isDark ? "text-violet-400" : "text-blue-600"}`}>For You</p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">이런 분들을 위해 만들었습니다.</h2>
@@ -735,8 +752,8 @@ export default function Home() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" ref={faqReveal.ref} className="relative z-10 px-6 py-24">
-        <div className={`mx-auto max-w-3xl ${revealClass(faqReveal.isVisible)}`}>
+      <section id="faq" ref={faqRef} className="relative z-10 px-6 py-24">
+        <div className={`mx-auto max-w-3xl ${revealClass(faqVisible)}`}>
           <div className="text-center">
             <p className={`text-sm font-bold uppercase tracking-[0.2em] ${isDark ? "text-violet-400" : "text-blue-600"}`}>FAQ</p>
             <h2 className="mt-3 text-3xl font-extrabold tracking-tight md:text-4xl">자주 묻는 질문</h2>
@@ -758,8 +775,8 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section ref={ctaReveal.ref} className="relative z-10 px-6 py-32 text-center">
-        <div className={`relative mx-auto max-w-3xl overflow-hidden rounded-3xl px-8 py-20 ${revealClass(ctaReveal.isVisible)} ${isDark ? "border border-white/10 bg-white/5 backdrop-blur-xl" : "bg-slate-900 shadow-2xl"}`}>
+      <section ref={ctaRef} className="relative z-10 px-6 py-32 text-center">
+        <div className={`relative mx-auto max-w-3xl overflow-hidden rounded-3xl px-8 py-20 ${revealClass(ctaVisible)} ${isDark ? "border border-white/10 bg-white/5 backdrop-blur-xl" : "bg-slate-900 shadow-2xl"}`}>
           {isDark ? <><div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-blue-600/30 blur-3xl" /><div className="absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-violet-600/30 blur-3xl" /></> : <><div className="absolute -left-20 -top-20 h-56 w-56 rounded-full bg-blue-200/30 blur-3xl" /><div className="absolute -right-20 -bottom-20 h-56 w-56 rounded-full bg-violet-200/30 blur-3xl" /></>}
           <h2 className="relative text-3xl font-extrabold tracking-tight text-white md:text-5xl">당신의 첫 웹앱,<br /><span className={isDark ? "bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent" : "text-blue-400"}>여기서 시작하세요.</span></h2>
           <p className="relative mx-auto mt-5 max-w-xl text-lg leading-8 text-white/60">막연했던 아이디어를 바이브 코딩으로 현실로 만들어보세요.</p>

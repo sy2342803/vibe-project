@@ -116,21 +116,44 @@ const CURRICULUM: Lesson[][] = [
 const TABS = ["🌱 입문", "⚡ 핵심기술", "🚀 실전", "🎓 고급"];
 const STAGE_NAMES = ["입문", "핵심기술", "실전", "고급"];
 const QUICK_CHIPS = ["바이브코딩이 뭐예요?", "어디서 시작해야 할까요?", "AI 프롬프트 잘 쓰는 법", "추천 도구 알려줘"];
+const LESSON_TASKS: Record<string, string> = {
+  "바이브코딩이란?": "내가 만들고 싶은 앱 아이디어를 한 문장으로 적고, 그 앱이 해결할 불편함을 한 문장으로 추가해보세요.",
+  "AI와 대화하는 법": "나쁜 프롬프트 하나를 고른 뒤, 목적/동작/맥락이 들어간 좋은 프롬프트로 다시 써보세요.",
+  "도구 세팅하기": "v0.dev, Bolt.new, Cursor 중 하나를 실제로 열어보고, 어떤 입력창에 프롬프트를 넣는지 확인해보세요.",
+  "첫 번째 바이브": "Todo 앱 프롬프트를 AI 도구에 붙여넣고, 나온 결과에서 마음에 드는 점과 고칠 점을 각각 하나씩 적어보세요.",
+  "프롬프트 엔지니어링": "역할, 목표, 기술스택, 제약조건, 출력형식을 모두 넣은 프롬프트를 한 번 작성해보세요.",
+  "반복 개선하기": "AI가 만든 결과물에 대해 색상, 모바일, 에러 상태 중 하나를 골라 개선 요청을 한 번 더 보내보세요.",
+  "AI로 디버깅하기": "에러 메시지 예시와 내가 하려던 일을 함께 적은 디버깅 프롬프트를 작성해보세요.",
+  "코드 이해하기": "AI가 만든 코드 일부를 골라 '이 코드가 어떤 순서로 동작하는지 설명해줘'라고 질문해보세요.",
+  "API 연동하기": "로딩, 에러, 성공 상태가 포함된 API 연동 요청 프롬프트를 한 번 작성해보세요.",
+  "컴포넌트 설계": "Props로 바꿀 수 있는 버튼 또는 카드 컴포넌트를 요청하는 프롬프트를 작성해보세요.",
+  "상태 관리하기": "내 앱에서 기억해야 할 상태 3가지를 적고, 어떤 컴포넌트가 그 상태를 쓰는지 연결해보세요.",
+  "배포하기": "배포 전 확인할 환경변수, 빌드, GitHub, Vercel 체크리스트를 내 프로젝트 기준으로 적어보세요.",
+  "AI 앱 만들기": "AI 기능이 들어간 앱 아이디어 하나를 정하고, 입력/AI 처리/결과 화면을 나눠 설명해보세요.",
+  "성능 최적화": "느린 화면을 가정하고, 리렌더링/이미지/데이터 호출 중 어떤 부분을 점검할지 AI에게 묻는 프롬프트를 작성해보세요.",
+  "보안 검토하기": "사용자 입력, 권한, 환경변수 노출을 점검해달라는 보안 리뷰 프롬프트를 작성해보세요.",
+  "나만의 AI 워크플로우": "아이디어 정리부터 배포까지 내가 반복할 5단계 AI 개발 루틴을 직접 적어보세요.",
+};
+const CONFETTI_COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#ef4444"];
+const seeded = (seed: number) => {
+  const value = Math.sin(seed * 999) * 10000;
+  return value - Math.floor(value);
+};
+const confettiParticles = Array.from({ length: 60 }, (_, i) => ({
+  id: i,
+  x: seeded(i + 1) * 100,
+  delay: seeded(i + 11) * 2,
+  duration: 2 + seeded(i + 21) * 2,
+  color: CONFETTI_COLORS[Math.floor(seeded(i + 31) * CONFETTI_COLORS.length)],
+  size: 6 + seeded(i + 41) * 8,
+  radius: seeded(i + 51) > 0.5 ? "50%" : "2px",
+}));
 
 // ── 축하 파티클 ──
 function ConfettiParticles() {
-  const colors = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#ef4444"];
-  const particles = Array.from({ length: 60 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    delay: Math.random() * 2,
-    duration: 2 + Math.random() * 2,
-    color: colors[Math.floor(Math.random() * colors.length)],
-    size: 6 + Math.random() * 8,
-  }));
   return (
     <div className="pointer-events-none fixed inset-0 z-[200] overflow-hidden">
-      {particles.map((p) => (
+      {confettiParticles.map((p) => (
         <div
           key={p.id}
           className="absolute animate-confetti"
@@ -138,7 +161,7 @@ function ConfettiParticles() {
             left: `${p.x}%`, top: "-20px",
             width: `${p.size}px`, height: `${p.size}px`,
             backgroundColor: p.color,
-            borderRadius: Math.random() > 0.5 ? "50%" : "2px",
+            borderRadius: p.radius,
             animationDelay: `${p.delay}s`,
             animationDuration: `${p.duration}s`,
           }}
@@ -186,6 +209,7 @@ export default function Learn() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [chips, setChips] = useState(QUICK_CHIPS);
+  const [taskConfirmed, setTaskConfirmed] = useState(false);
 
   // ── 게임화 상태 ──
   const [showConfetti, setShowConfetti] = useState(false);
@@ -197,30 +221,37 @@ export default function Learn() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("vibe-theme");
-    if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme as Theme);
+    queueMicrotask(() => {
+      try {
+        const savedTheme = localStorage.getItem("vibe-theme");
+        if (savedTheme === "light" || savedTheme === "dark") setTheme(savedTheme as Theme);
 
-    const savedCompleted = localStorage.getItem("vibe-completed");
-    const savedXp = localStorage.getItem("vibe-xp");
-    if (savedCompleted) setCompletedLessons(new Set(JSON.parse(savedCompleted)));
-    if (savedXp) {
-      const parsed = parseInt(savedXp);
-      setXp(parsed);
-      setPrevLevel(Math.floor(parsed / 200) + 1);
-    }
+        const savedCompleted = localStorage.getItem("vibe-completed");
+        const savedXp = localStorage.getItem("vibe-xp");
+        if (savedCompleted) setCompletedLessons(new Set(JSON.parse(savedCompleted)));
+        if (savedXp) {
+          const parsed = parseInt(savedXp);
+          setXp(parsed);
+          setPrevLevel(Math.floor(parsed / 200) + 1);
+        }
 
-    const lastVisit = localStorage.getItem("vibe-last-visit");
-    const today = new Date().toDateString();
-    const savedStreak = parseInt(localStorage.getItem("vibe-streak") || "0");
-    if (lastVisit === today) {
-      setStreak(savedStreak);
-    } else {
-      const yesterday = new Date(Date.now() - 86400000).toDateString();
-      const newStreak = lastVisit === yesterday ? savedStreak + 1 : 1;
-      setStreak(newStreak);
-      localStorage.setItem("vibe-streak", String(newStreak));
-      localStorage.setItem("vibe-last-visit", today);
-    }
+        const lastVisit = localStorage.getItem("vibe-last-visit");
+        const today = new Date().toDateString();
+        const savedStreak = parseInt(localStorage.getItem("vibe-streak") || "0");
+        if (lastVisit === today) {
+          setStreak(savedStreak);
+        } else {
+          const yesterday = new Date(Date.now() - 86400000).toDateString();
+          const newStreak = lastVisit === yesterday ? savedStreak + 1 : 1;
+          setStreak(newStreak);
+          localStorage.setItem("vibe-streak", String(newStreak));
+          localStorage.setItem("vibe-last-visit", today);
+        }
+      } catch {
+        localStorage.removeItem("vibe-completed");
+        localStorage.removeItem("vibe-xp");
+      }
+    });
   }, []);
 
   const isDark = theme === "dark";
@@ -230,6 +261,14 @@ export default function Learn() {
   const level = Math.floor(xp / 200) + 1;
   const xpInLevel = xp % 200;
   const badge = getBadge(completedCount);
+  const selectedLessonParts = currentLesson?.split("-").map(Number);
+  const selectedTabIndex = selectedLessonParts?.[0] ?? -1;
+  const selectedLessonIndex = selectedLessonParts?.[1] ?? -1;
+  const selectedLesson = selectedTabIndex >= 0 && selectedLessonIndex >= 0
+    ? CURRICULUM[selectedTabIndex]?.[selectedLessonIndex]
+    : null;
+  const selectedLessonCompleted = currentLesson ? completedLessons.has(currentLesson) : false;
+  const selectedLessonTask = selectedLesson ? LESSON_TASKS[selectedLesson.title] : "";
 
   const handleThemeChange = (nextTheme: Theme) => {
     setTheme(nextTheme);
@@ -279,6 +318,7 @@ export default function Learn() {
     setPrevLevel(1);
     setCurrentLesson(null);
     setCurrentTab(0);
+    setTaskConfirmed(false);
     setShowResetConfirm(false);
     setMessages([
       {
@@ -292,26 +332,36 @@ export default function Learn() {
   const selectLesson = (tabIdx: number, lessonIdx: number) => {
     const id = `${tabIdx}-${lessonIdx}`;
     setCurrentLesson(id);
+    setTaskConfirmed(false);
     const lesson = CURRICULUM[tabIdx][lessonIdx];
-
-    if (!completedLessons.has(id)) {
-      const newCompleted = new Set(completedLessons);
-      newCompleted.add(id);
-      setCompletedLessons(newCompleted);
-      const newXp = xp + 50;
-      setXp(newXp);
-      localStorage.setItem("vibe-completed", JSON.stringify([...newCompleted]));
-      localStorage.setItem("vibe-xp", String(newXp));
-      checkLevelUp(newXp);
-      checkStageClear(newCompleted, tabIdx);
-      checkMasterClear(newCompleted);
-    }
 
     setMessages((prev) => [
       ...prev,
-      { role: "assistant", content: `"${lesson.title}" 레슨을 선택하셨네요! 🎉\n\n이 레슨에 대해 궁금한 점이 있으면 언제든 물어보세요!` },
+      { role: "assistant", content: `"${lesson.title}" 레슨을 열었습니다.\n\n본문을 읽고 수행 과제를 직접 해본 뒤 완료 버튼을 눌러주세요. 궁금한 점은 언제든 물어보세요.` },
     ]);
-    setChips(["이 레슨에 대해 더 설명해줘", "실습 예제 만들어줘", "다음 단계는?", "퀴즈 내줘"]);
+    setChips(["이 레슨을 쉽게 설명해줘", "수행 과제 예시 보여줘", "내 답을 검사해줘", "다음 단계는?"]);
+  };
+
+  const completeLesson = (tabIdx: number, lessonIdx: number) => {
+    const id = `${tabIdx}-${lessonIdx}`;
+    const lesson = CURRICULUM[tabIdx][lessonIdx];
+    if (completedLessons.has(id)) return;
+
+    const newCompleted = new Set(completedLessons);
+    newCompleted.add(id);
+    setCompletedLessons(newCompleted);
+    const newXp = xp + 50;
+    setXp(newXp);
+    localStorage.setItem("vibe-completed", JSON.stringify([...newCompleted]));
+    localStorage.setItem("vibe-xp", String(newXp));
+    checkLevelUp(newXp);
+    checkStageClear(newCompleted, tabIdx);
+    checkMasterClear(newCompleted);
+    setTaskConfirmed(false);
+    setMessages((prev) => [
+      ...prev,
+      { role: "assistant", content: `"${lesson.title}" 수행 과제를 완료 처리했습니다.\n\n잘했어요. 이제 다음 레슨으로 넘어가거나, 방금 한 과제를 저에게 보여주고 피드백을 받을 수 있습니다.` },
+    ]);
   };
 
   const sendMessage = async (text?: string) => {
@@ -337,7 +387,7 @@ export default function Learn() {
         body: JSON.stringify({ idea: fullQuestion, type: "guide" }),
       });
       const json = await res.json();
-      let reply = json.success && json.data
+      const reply = json.success && json.data
         ? (typeof json.data === "string" ? json.data : JSON.stringify(json.data))
         : "죄송해요, 응답을 받지 못했습니다. 잠시 후 다시 시도해주세요.";
       setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
@@ -629,7 +679,7 @@ export default function Learn() {
             </div>
 
             {/* 레슨 본문 */}
-            {currentLesson && (
+            {currentLesson && selectedLesson && (
               <div className={`rounded-2xl border p-6 ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white shadow-sm"}`}>
                 <style>{`
                   .lesson-title { font-size: 1.25rem; font-weight: 800; margin-bottom: 1rem; }
@@ -638,7 +688,45 @@ export default function Learn() {
                   p { margin-bottom: 0.75rem; font-size: 0.9rem; line-height: 1.8; ${isDark ? "color: rgba(255,255,255,0.6);" : "color: #475569;"} }
                   strong { ${isDark ? "color: white;" : "color: #0f172a;"} }
                 `}</style>
-                <div dangerouslySetInnerHTML={{ __html: CURRICULUM[parseInt(currentLesson.split("-")[0])][parseInt(currentLesson.split("-")[1])].content }} />
+                <div dangerouslySetInnerHTML={{ __html: selectedLesson.content }} />
+
+                <div className={`mt-6 rounded-2xl border p-4 ${isDark ? "border-emerald-500/20 bg-emerald-500/5" : "border-emerald-200 bg-emerald-50"}`}>
+                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <span className={`text-[11px] font-black uppercase tracking-wider ${isDark ? "text-emerald-300" : "text-emerald-700"}`}>수행형 과제</span>
+                      <h3 className={`mt-1 text-sm font-black ${isDark ? "text-white" : "text-slate-900"}`}>읽는 데서 끝내지 않고 직접 해보기</h3>
+                    </div>
+                    <span className={`w-fit rounded-full border px-2 py-1 text-[11px] font-bold ${selectedLessonCompleted ? isDark ? "border-emerald-500/30 text-emerald-300" : "border-emerald-300 text-emerald-700" : isDark ? "border-white/10 text-white/40" : "border-slate-200 text-slate-500"}`}>
+                      {selectedLessonCompleted ? "완료됨" : "50 XP"}
+                    </span>
+                  </div>
+                  <p className={`mb-4 text-sm leading-relaxed ${isDark ? "text-white/70" : "text-slate-700"}`}>{selectedLessonTask}</p>
+                  {selectedLessonCompleted ? (
+                    <div className={`rounded-xl border px-3 py-2 text-xs font-bold ${isDark ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-200" : "border-emerald-200 bg-white text-emerald-700"}`}>
+                      이 레슨의 수행 과제를 완료했습니다. 다음 레슨으로 넘어가도 좋습니다.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <label className={`flex items-start gap-2 text-xs leading-relaxed ${isDark ? "text-white/60" : "text-slate-600"}`}>
+                        <input
+                          type="checkbox"
+                          checked={taskConfirmed}
+                          onChange={(event) => setTaskConfirmed(event.target.checked)}
+                          className="mt-0.5 rounded border-slate-300 accent-emerald-500"
+                        />
+                        <span>과제를 직접 수행했고, 결과를 설명할 수 있습니다.</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => completeLesson(selectedTabIndex, selectedLessonIndex)}
+                        disabled={!taskConfirmed}
+                        className="rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-black text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                      >
+                        과제 완료하기
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -649,7 +737,7 @@ export default function Learn() {
               <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white ${isDark ? "bg-gradient-to-br from-blue-500 to-violet-500" : "bg-blue-600"}`}>AI</div>
               <div>
                 <div className={`text-sm font-bold ${isDark ? "text-white" : "text-slate-900"}`}>AI 바이브코딩 튜터</div>
-                <div className={`text-xs ${isDark ? "text-white/30" : "text-slate-400"}`}>Gemini 기반 · 한국어 지원</div>
+                <div className={`text-xs ${isDark ? "text-white/30" : "text-slate-400"}`}>AI 튜터 · 한국어 지원</div>
               </div>
               <div className="ml-auto">
                 <span className={`h-2 w-2 rounded-full ${isLoading ? "animate-pulse bg-yellow-400" : "bg-green-400"}`} style={{ display: "inline-block" }} />

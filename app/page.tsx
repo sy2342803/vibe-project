@@ -577,7 +577,9 @@ export default function Home() {
             <h1 className="brand-title max-w-4xl text-5xl font-extrabold tracking-tight md:text-7xl lg:text-[88px] anim-fiu" style={{ animationDelay: ".1s" }}>
               오늘 떠오른
               <br />
-              <span className={isDark ? "text-lime-200" : "text-blue-600"}>아이디어</span>
+              아이디어,
+              <br />
+              <span className={isDark ? "text-lime-200" : "text-blue-600"}>오늘 안에 완성하세요.</span>
             </h1>
             <p className={`brand-lead mt-7 max-w-2xl text-xl font-medium md:text-2xl anim-fiu ${isDark ? "text-white/70" : "text-slate-700"}`} style={{ animationDelay: ".2s" }}>비전공자도, 1일 만에, 진짜 프로토타입.</p>
             <p className={`mt-3 max-w-xl text-base leading-relaxed anim-fiu ${isDark ? "text-white/55" : "text-slate-600"}`} style={{ animationDelay: ".3s" }}>

@@ -226,8 +226,8 @@ function AiCommentBox({
     <div className="mt-3">
       {!result && (
         <button type="button" onClick={() => onRequest(sectionKey, content, sectionLabel)} disabled={isLoading}
-          className={`flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border transition disabled:opacity-50 ${
-            isDark ? "border-violet-500/30 text-violet-400 bg-violet-500/5 hover:bg-violet-500/10" : "border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100"
+          className={`mentor-feedback-button flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg border transition disabled:opacity-50 ${
+            isDark ? "border-[#9fe870] bg-[#0b0f0a] text-[#9fe870] hover:bg-[#17210f]" : "border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100"
           }`}>
           {isLoading ? (
             <><div className="h-3 w-3 animate-spin rounded-full border-2 border-violet-500 border-t-transparent" />멘토가 읽는 중...</>

@@ -920,7 +920,7 @@ export default function Workspace() {
     : null;
 
   return (
-    <main className={`relative min-h-screen antialiased transition-colors duration-300 ${isDark ? "bg-[#0a0a16] text-white" : "bg-slate-50 text-slate-900"}`}>
+    <main className={`brand-page relative min-h-screen antialiased transition-colors duration-300 ${isDark ? "brand-dark text-white" : "text-slate-900"}`}>
 
       {toast && (
         <StatusToast
@@ -939,10 +939,10 @@ export default function Workspace() {
       )}
 
       {/* 네비 */}
-      <nav className={`sticky top-0 z-50 border-b backdrop-blur-md transition-colors ${isDark ? "border-white/5 bg-white/5" : "border-slate-200 bg-white/90"}`}>
+      <nav className={`brand-nav sticky top-0 z-50 border-b backdrop-blur-md transition-colors ${isDark ? "border-white/5 bg-white/5" : "border-slate-200 bg-white/90"}`}>
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6 md:py-4">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/" className="text-lg font-black tracking-tighter bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent hover:opacity-80 transition">
+            <Link href="/" className="brand-wordmark text-lg font-black tracking-tighter bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent hover:opacity-80 transition">
               VIBE PROJECT
             </Link>
             <Link href="/learn" className={`hidden text-xs font-bold px-3 py-1.5 rounded-xl transition sm:inline-flex ${isDark ? "bg-white/5 text-slate-300 hover:bg-white/10" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}>

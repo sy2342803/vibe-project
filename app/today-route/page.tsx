@@ -78,21 +78,23 @@ export default function TodayRoutePage() {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    setIsMounted(true);
+    queueMicrotask(() => {
+      setIsMounted(true);
 
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
 
-      if (!saved) return;
+        if (!saved) return;
 
-      const parsed: unknown = JSON.parse(saved);
+        const parsed: unknown = JSON.parse(saved);
 
-      if (Array.isArray(parsed)) {
-        setCheckedIds(parsed.filter((item): item is string => typeof item === "string"));
+        if (Array.isArray(parsed)) {
+          setCheckedIds(parsed.filter((item): item is string => typeof item === "string"));
+        }
+      } catch {
+        setCheckedIds([]);
       }
-    } catch {
-      setCheckedIds([]);
-    }
+    });
   }, []);
 
   const totalMinutes = checklist.reduce(
@@ -136,74 +138,74 @@ export default function TodayRoutePage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
+    <main className="brand-page min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
       <div className="mx-auto max-w-4xl">
-        <nav className="mb-8 flex items-center justify-between gap-3">
-          <Link href="/" className="text-sm font-extrabold text-blue-600">
+        <nav className="brand-nav mb-8 flex items-center justify-between gap-3 rounded-xl border px-4 py-3">
+          <Link href="/" className="brand-wordmark text-sm font-extrabold text-blue-600">
             VIBE PROJECT
           </Link>
 
           <div className="flex items-center gap-2">
             <Link
               href="/error-helper"
-              className="hidden rounded-xl bg-red-50 px-4 py-2 text-xs font-bold text-red-600 sm:inline-flex"
+              className="brand-pill-secondary hidden rounded-full bg-red-50 px-4 py-2 text-xs font-bold text-red-600 sm:inline-flex"
             >
               에러 번역기
             </Link>
 
             <Link
               href="/workspace"
-              className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white"
+              className="brand-pill-primary rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white"
             >
               아이디어 만들기
             </Link>
           </div>
         </nav>
 
-        <section className="mb-6 rounded-3xl bg-gradient-to-br from-blue-600 to-violet-600 p-6 text-white shadow-sm md:p-8">
-          <p className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-bold">
+        <section className="brand-card-strong mb-6 rounded-3xl bg-white p-6 text-slate-900 shadow-sm md:p-8">
+          <p className="brand-kicker mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-bold">
             ✅ 오늘 완성 루트
           </p>
 
-          <h1 className="text-2xl font-extrabold tracking-tight md:text-4xl">
+          <h1 className="brand-title text-2xl font-extrabold tracking-tight md:text-4xl">
             오늘 안에 MVP를 완성하는 체크리스트
           </h1>
 
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-white/80">
+          <p className="brand-muted mt-3 max-w-2xl text-sm leading-7 text-white/80">
             처음부터 완벽한 앱을 만들려고 하면 오래 걸립니다. 오늘은 작게
             만들고, 실행하고, 배포하는 것까지 가는 게 목표예요.
           </p>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-white/10 p-4">
-              <p className="text-xs font-bold text-white/70">진행률</p>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-bold text-slate-400">진행률</p>
               <p className="mt-1 text-2xl font-extrabold">{progress}%</p>
             </div>
 
-            <div className="rounded-2xl bg-white/10 p-4">
-              <p className="text-xs font-bold text-white/70">완료한 단계</p>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-bold text-slate-400">완료한 단계</p>
               <p className="mt-1 text-2xl font-extrabold">
                 {checkedIds.length}/{checklist.length}
               </p>
             </div>
 
-            <div className="rounded-2xl bg-white/10 p-4">
-              <p className="text-xs font-bold text-white/70">예상 시간</p>
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-xs font-bold text-slate-400">예상 시간</p>
               <p className="mt-1 text-2xl font-extrabold">
                 {checkedMinutes}/{totalMinutes}분
               </p>
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl bg-white/10 p-4">
+          <div className="mt-5 rounded-2xl bg-slate-50 p-4">
             <div className="mb-2 flex items-center justify-between text-sm font-bold">
               <span>전체 진행 상황</span>
               <span>{progress}%</span>
             </div>
 
-            <div className="h-3 overflow-hidden rounded-full bg-white/20">
+            <div className="h-3 overflow-hidden rounded-full bg-slate-200">
               <div
-                className="h-full rounded-full bg-white transition-all duration-300"
+                className="h-full rounded-full bg-blue-600 transition-all duration-300"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -283,21 +285,21 @@ export default function TodayRoutePage() {
           <button
             type="button"
             onClick={reset}
-            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
+            className="brand-pill-secondary rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
           >
             체크 초기화
           </button>
 
           <Link
             href="/error-helper"
-            className="rounded-2xl bg-red-500 px-5 py-3 text-center text-sm font-bold text-white shadow-sm hover:bg-red-600"
+            className="brand-pill-secondary rounded-full px-5 py-3 text-center text-sm font-bold"
           >
             에러가 났다면 에러 번역기로 가기
           </Link>
 
           <Link
             href="/workspace"
-            className="rounded-2xl bg-blue-600 px-5 py-3 text-center text-sm font-bold text-white shadow-sm hover:bg-blue-700"
+            className="brand-pill-primary rounded-full bg-blue-600 px-5 py-3 text-center text-sm font-bold text-white shadow-sm hover:bg-blue-700"
           >
             내 아이디어 다시 다듬기
           </Link>

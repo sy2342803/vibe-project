@@ -325,7 +325,7 @@ export default function ErrorHelperPage() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
+    <main className="brand-page min-h-screen bg-slate-50 px-4 py-8 text-slate-900">
       {toast && (
         <div className="fixed bottom-5 left-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 rounded-2xl bg-slate-900 px-5 py-3 text-center text-xs font-bold text-white shadow-xl">
           {toast}
@@ -333,34 +333,34 @@ export default function ErrorHelperPage() {
       )}
 
       <div className="mx-auto max-w-6xl">
-        <nav className="mb-8 flex items-center justify-between gap-3">
-          <Link href="/" className="text-sm font-extrabold text-blue-600">
+        <nav className="brand-nav mb-8 flex items-center justify-between gap-3 rounded-xl border px-4 py-3">
+          <Link href="/" className="brand-wordmark text-sm font-extrabold text-blue-600">
             VIBE PROJECT
           </Link>
 
           <div className="flex items-center gap-2">
             <Link
               href="/today-route"
-              className="hidden rounded-xl bg-blue-50 px-4 py-2 text-xs font-bold text-blue-600 sm:inline-flex"
+              className="brand-pill-secondary hidden rounded-full bg-blue-50 px-4 py-2 text-xs font-bold text-blue-600 sm:inline-flex"
             >
               오늘 완성 루트
             </Link>
 
             <Link
               href="/workspace"
-              className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-bold text-white"
+              className="brand-pill-primary rounded-full bg-slate-900 px-4 py-2 text-xs font-bold text-white"
             >
               워크스페이스로
             </Link>
           </div>
         </nav>
 
-        <section className="mb-6 overflow-hidden rounded-3xl bg-white p-6 shadow-sm md:p-8">
-          <p className="mb-3 inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-600">
+        <section className="brand-card-strong mb-6 overflow-hidden rounded-3xl bg-white p-6 shadow-sm md:p-8">
+          <p className="brand-kicker mb-3 inline-flex rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-600">
             🧯 AI 연결형 에러 번역기
           </p>
 
-          <h1 className="text-2xl font-extrabold tracking-tight md:text-4xl">
+          <h1 className="brand-title text-2xl font-extrabold tracking-tight md:text-4xl">
             실제 터미널 에러를 AI가 쉬운 말로 분석해드릴게요
           </h1>
 
@@ -385,7 +385,7 @@ export default function ErrorHelperPage() {
         </section>
 
         <section className="grid min-w-0 gap-5 xl:grid-cols-2">
-          <div className="min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
+          <div className="brand-card min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <label htmlFor="error-message" className="block text-sm font-bold">
                 에러 메시지 붙여넣기
@@ -428,7 +428,7 @@ Module not found: Can't resolve '@/lib/vibe-result'
                 type="button"
                 onClick={handleAnalyzeWithAi}
                 disabled={loading || !message.trim()}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="brand-pill-primary rounded-full bg-blue-600 px-5 py-3 text-sm font-extrabold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 {loading ? "AI가 에러를 분석하는 중..." : "AI로 에러 분석하기"}
               </button>
@@ -452,7 +452,7 @@ Module not found: Can't resolve '@/lib/vibe-result'
           <div className="min-w-0 space-y-4">
             {aiResult ? (
               <>
-                <div className="min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
+                <div className="brand-card min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
                   <div className="mb-3 flex items-center justify-between gap-3">
                     <p className="text-xs font-bold text-blue-600">
                       {analyzeMode === "ai" ? "AI 분석 결과" : "기본 분석 결과"}
@@ -476,14 +476,14 @@ Module not found: Can't resolve '@/lib/vibe-result'
                   </p>
                 </div>
 
-                <div className="min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
+                <div className="brand-card min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
                   <p className="mb-2 text-xs font-bold text-blue-600">쉬운 설명</p>
                   <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
                     {aiResult.explanation}
                   </p>
                 </div>
 
-                <div className="min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
+                <div className="brand-card min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
                   <p className="mb-2 text-xs font-bold text-blue-600">해결 단계</p>
                   <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-600">
                     {aiResult.solution}
@@ -492,7 +492,7 @@ Module not found: Can't resolve '@/lib/vibe-result'
               </>
             ) : (
               <>
-                <div className="min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
+                <div className="brand-card min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
                   <p className="text-xs font-bold text-blue-600">미리보기 분석</p>
                   <h2 className="mt-2 text-lg font-extrabold">{fallbackGuide.title}</h2>
                   <p className="mt-3 text-sm leading-7 text-slate-600">
@@ -500,7 +500,7 @@ Module not found: Can't resolve '@/lib/vibe-result'
                   </p>
                 </div>
 
-                <div className="min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
+                <div className="brand-card min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
                   <p className="mb-3 text-xs font-bold text-blue-600">먼저 확인할 것</p>
                   <ul className="space-y-2">
                     {fallbackGuide.firstChecks.map((item) => (
@@ -515,7 +515,7 @@ Module not found: Can't resolve '@/lib/vibe-result'
                   </ul>
                 </div>
 
-                <div className="min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
+                <div className="brand-card min-w-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
                   <p className="mb-3 text-xs font-bold text-blue-600">
                     확인할 가능성이 높은 파일
                   </p>
@@ -534,7 +534,7 @@ Module not found: Can't resolve '@/lib/vibe-result'
               </>
             )}
 
-            <div className="min-w-0 overflow-hidden rounded-3xl bg-blue-600 p-5 text-white shadow-sm">
+            <div className="brand-panel-dark min-w-0 overflow-hidden rounded-3xl bg-blue-600 p-5 text-white shadow-sm">
               <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-bold">Cursor/ChatGPT에게 물어볼 고급 프롬프트</p>

@@ -409,7 +409,7 @@ export default function Learn() {
   };
 
   return (
-    <main className={`relative min-h-screen overflow-hidden antialiased transition-colors duration-500 ${isDark ? "bg-[#0c0c1d] text-white" : "bg-white text-slate-900"}`}>
+    <main className={`brand-page relative min-h-screen overflow-hidden antialiased transition-colors duration-500 ${isDark ? "brand-dark text-white" : "text-slate-900"}`}>
 
       {/* ── 축하 이펙트 ── */}
       {showConfetti && <ConfettiParticles />}
@@ -514,9 +514,9 @@ export default function Learn() {
       )}
 
       {/* ── 헤더 ── */}
-      <nav className={`sticky top-0 z-50 border-b backdrop-blur-xl transition-colors duration-500 ${isDark ? "border-white/5 bg-[#0c0c1d]/80" : "border-slate-100 bg-white/90"}`}>
+      <nav className={`brand-nav sticky top-0 z-50 border-b backdrop-blur-xl transition-colors duration-500 ${isDark ? "border-white/5 bg-[#0c0c1d]/80" : "border-slate-100 bg-white/90"}`}>
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 md:px-6 md:py-4">
-          <Link href="/" className={`text-base font-extrabold tracking-tight md:text-lg ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent"}`}>
+          <Link href="/" className={`brand-wordmark text-base font-extrabold tracking-tight md:text-lg ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent"}`}>
             VIBE PROJECT
           </Link>
 
@@ -555,7 +555,7 @@ export default function Learn() {
             </div>
 
             <Link href="/workspace"
-              className={`hidden rounded-lg px-4 py-1.5 text-xs font-bold tracking-wide transition md:block ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:opacity-90" : "bg-blue-600 text-white hover:bg-blue-700"}`}>
+              className={`brand-pill-primary hidden rounded-full px-4 py-1.5 text-xs font-bold tracking-wide transition md:block ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white hover:opacity-90" : "bg-blue-600 text-white hover:bg-blue-700"}`}>
               실전 시작 →
             </Link>
           </div>
@@ -602,7 +602,7 @@ export default function Learn() {
             <span className={`h-1.5 w-1.5 animate-pulse rounded-full ${isDark ? "bg-blue-400" : "bg-blue-500"}`} />
             바이브코딩 학습 센터
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight md:text-4xl">
+          <h1 className="brand-title text-3xl font-extrabold tracking-tight md:text-4xl">
             AI와 함께 배우는
             <span className={`ml-2 ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "text-blue-600"}`}>바이브코딩</span>
           </h1>

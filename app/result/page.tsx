@@ -404,8 +404,8 @@ function ResultContent() {
         <PrintStyles />
 
         <div
-          className={`flex min-h-screen flex-col items-center justify-center ${
-            isDark ? "bg-[#0c0c1d] text-white" : "bg-white text-slate-900"
+          className={`brand-page flex min-h-screen flex-col items-center justify-center ${
+            isDark ? "brand-dark text-white" : "text-slate-900"
           }`}
         >
           <h1 className="text-2xl font-bold">유효하지 않은 링크입니다 🥲</h1>
@@ -416,7 +416,7 @@ function ResultContent() {
 
           <Link
             href="/workspace"
-            className="mt-8 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700"
+            className="brand-pill-primary mt-8 rounded-full bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700"
           >
             내 아이디어 기획하러 가기
           </Link>
@@ -432,12 +432,12 @@ function ResultContent() {
       <PrintStyles />
 
       <main
-        className={`relative min-h-screen antialiased transition-colors duration-500 ${
-          isDark ? "bg-[#0c0c1d] text-white" : "bg-slate-50 text-slate-900"
+        className={`brand-page relative min-h-screen antialiased transition-colors duration-500 ${
+          isDark ? "brand-dark text-white" : "text-slate-900"
         }`}
       >
         <nav
-          className={`sticky top-0 z-50 border-b backdrop-blur-xl transition-colors duration-500 print:hidden ${
+          className={`brand-nav sticky top-0 z-50 border-b backdrop-blur-xl transition-colors duration-500 print:hidden ${
             isDark
               ? "border-white/5 bg-[#0c0c1d]/80"
               : "border-slate-200 bg-white/90"
@@ -446,7 +446,7 @@ function ResultContent() {
           <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3 md:px-6 md:py-4">
             <Link
               href="/"
-              className={`text-base font-extrabold tracking-tight md:text-lg ${
+              className={`brand-wordmark text-base font-extrabold tracking-tight md:text-lg ${
                 isDark
                   ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent"
                   : "bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent"
@@ -492,7 +492,7 @@ function ResultContent() {
 
               <Link
                 href="/"
-                className={`hidden rounded-lg px-4 py-1.5 text-xs font-bold transition sm:block ${
+                className={`brand-pill-secondary hidden rounded-full px-4 py-1.5 text-xs font-bold transition sm:block ${
                   isDark
                     ? "bg-white/10 text-white hover:bg-white/20"
                     : "bg-slate-200 text-slate-700 hover:bg-slate-300"

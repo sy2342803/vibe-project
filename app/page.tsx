@@ -534,7 +534,7 @@ export default function Home() {
   const revealClass = (v: boolean) => `transition-all duration-700 ${v ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`;
 
   return (
-    <main id="top" className={`relative min-h-screen overflow-hidden antialiased transition-colors duration-500 ${isDark ? "bg-[#080812] text-white" : "bg-white text-slate-900"}`}>
+    <main id="top" className={`brand-page relative min-h-screen overflow-hidden antialiased transition-colors duration-500 ${isDark ? "brand-dark text-white" : "text-slate-900"}`}>
       <style>{`
         @keyframes fadeInUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
         .anim-fiu{animation:fadeInUp .7s ease-out forwards;opacity:0;}
@@ -542,18 +542,10 @@ export default function Home() {
         .animate-float-particle{animation:float-p ease-in-out infinite;}
       `}</style>
 
-      {isDark && (
-        <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-          <div className="absolute -left-40 -top-40 h-[600px] w-[600px] rounded-full bg-violet-600/20 blur-[120px]" />
-          <div className="absolute -right-40 top-60 h-[500px] w-[500px] rounded-full bg-blue-600/20 blur-[120px]" />
-          <div className="absolute bottom-0 left-1/2 h-[400px] w-[600px] -translate-x-1/2 rounded-full bg-indigo-600/10 blur-[120px]" />
-        </div>
-      )}
-
       {/* 헤더 */}
-      <nav className={`sticky top-0 z-50 border-b backdrop-blur-xl ${isDark ? "border-white/5 bg-[#080812]/80" : "border-slate-100 bg-white/90"}`}>
+      <nav className={`brand-nav sticky top-0 z-50 border-b backdrop-blur-xl ${isDark ? "border-white/5 bg-[#080812]/80" : "border-slate-100 bg-white/90"}`}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 md:px-6 md:py-4">
-          <a href="#top" className={`text-base font-extrabold tracking-tight md:text-lg ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent"}`}>VIBE PROJECT</a>
+          <a href="#top" className={`brand-wordmark text-base font-extrabold tracking-tight md:text-lg ${isDark ? "bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent" : "bg-gradient-to-r from-blue-600 to-violet-600 bg-clip-text text-transparent"}`}>VIBE PROJECT</a>
           <div className="hidden items-center gap-6 md:flex">
             {[
               { href: "/learn", label: "학습하기" },
@@ -571,7 +563,7 @@ export default function Home() {
               <button type="button" onClick={() => handleThemeChange("light")} className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${!isDark ? "bg-white text-blue-600 shadow-sm" : "text-white/40 hover:bg-white/10"}`}><SunIcon /></button>
               <button type="button" onClick={() => handleThemeChange("dark")} className={`flex h-7 w-7 items-center justify-center rounded-full transition-all ${isDark ? "bg-white/10 text-white shadow-sm" : "text-slate-500 hover:bg-slate-50"}`}><MoonIcon /></button>
             </div>
-            <a href="/workspace" className={`hidden rounded-lg px-4 py-1.5 text-xs font-bold tracking-wide transition md:block lg:px-5 lg:py-2.5 ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-900/40 hover:opacity-90" : "bg-blue-600 text-white shadow-lg shadow-blue-200 hover:bg-blue-700"}`}>START</a>
+            <a href="/workspace" className={`brand-pill-primary hidden rounded-full px-4 py-1.5 text-xs font-bold tracking-wide transition md:block lg:px-5 lg:py-2.5 ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-lg shadow-violet-900/40 hover:opacity-90" : "bg-blue-600 text-white shadow-lg shadow-blue-200 hover:bg-blue-700"}`}>START</a>
           </div>
         </div>
       </nav>
@@ -579,29 +571,21 @@ export default function Home() {
       {/* 히어로 */}
       <section className="relative z-10 overflow-hidden px-4 pb-24 pt-16 text-center md:pb-28 md:pt-36">
         <FloatingParticles isDark={isDark} />
-        {!isDark && (
-          <>
-            <div className="absolute inset-0 -z-10 opacity-[0.03]" style={{ backgroundImage: "linear-gradient(#000 1px,transparent 1px),linear-gradient(90deg,#000 1px,transparent 1px)", backgroundSize: "72px 72px" }} />
-            <div className="absolute inset-0 -z-10 bg-gradient-to-b from-blue-50/70 via-white to-white" />
-            <div className="absolute -left-16 top-10 -z-10 h-72 w-72 rounded-full bg-blue-200/40 blur-3xl" />
-            <div className="absolute right-0 top-24 -z-10 h-72 w-72 rounded-full bg-violet-200/30 blur-3xl" />
-          </>
-        )}
-        <div className="anim-fiu"><div className={`mb-6 inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold tracking-wide ${isDark ? "border-white/10 bg-white/5 text-white/60" : "border-slate-200 bg-white text-slate-600 shadow-sm"}`}><span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-blue-400" : "bg-blue-500"}`} />비전공자를 위한 실전 바이브 코딩 가이드</div></div>
-        <h1 className="mx-auto max-w-5xl text-4xl font-extrabold leading-[1.1] tracking-tight md:text-7xl anim-fiu" style={{ animationDelay: ".1s" }}>오늘 떠오른 아이디어,<br /><span className={isDark ? "bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent" : "text-blue-600"}>오늘 안에 완성하세요.</span></h1>
-        <p className={`mx-auto mt-6 max-w-2xl text-xl font-medium md:text-2xl anim-fiu ${isDark ? "text-white/55" : "text-slate-500"}`} style={{ animationDelay: ".2s" }}>비전공자도, 1일 만에, 진짜 프로토타입.</p>
+        <div className="anim-fiu"><div className={`brand-kicker mb-6 ${isDark ? "border-white/10 bg-white/5 text-white/70" : ""}`}><span className={`h-1.5 w-1.5 rounded-full animate-pulse ${isDark ? "bg-blue-400" : "bg-blue-500"}`} />비전공자를 위한 실전 바이브 코딩 가이드</div></div>
+        <h1 className="brand-title mx-auto max-w-5xl text-4xl font-extrabold leading-[1.1] tracking-tight md:text-7xl anim-fiu" style={{ animationDelay: ".1s" }}>오늘 떠오른 아이디어,<br /><span className={isDark ? "bg-gradient-to-r from-blue-400 via-violet-400 to-pink-400 bg-clip-text text-transparent" : "text-blue-600"}>오늘 안에 완성하세요.</span></h1>
+        <p className={`brand-lead mx-auto mt-6 max-w-2xl text-xl font-medium md:text-2xl anim-fiu ${isDark ? "text-white/55" : "text-slate-500"}`} style={{ animationDelay: ".2s" }}>비전공자도, 1일 만에, 진짜 프로토타입.</p>
         <p className={`mx-auto mt-3 max-w-2xl text-base leading-relaxed anim-fiu ${isDark ? "text-white/35" : "text-slate-400"}`} style={{ animationDelay: ".3s" }}>AI와 대화하며 개발하는 바이브 코딩을 가장 쉽게 배웁니다.<br className="hidden md:block" />당신의 첫 웹앱, 여기서 시작하세요.</p>
 
         {/* 버튼: A안 + 스크롤 힌트 */}
         <div className="mt-10 flex flex-col items-center gap-4 anim-fiu" style={{ animationDelay: ".4s" }}>
-          <a href="/workspace" className={`group rounded-full px-8 py-3 text-sm font-bold uppercase tracking-wide transition sm:text-base hover:scale-[1.02] ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-xl hover:opacity-90" : "bg-blue-600 text-white shadow-xl hover:bg-blue-700"}`}>
+          <a href="/workspace" className={`brand-pill-primary group rounded-full px-8 py-3 text-sm font-bold uppercase tracking-wide transition sm:text-base hover:scale-[1.02] ${isDark ? "bg-gradient-to-r from-blue-600 to-violet-600 text-white shadow-xl hover:opacity-90" : "bg-blue-600 text-white shadow-xl hover:bg-blue-700"}`}>
             바이브 코딩 시작하기 <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
           </a>
 
           <div className="flex flex-col gap-3 sm:flex-row">
             <a
               href="/today-route"
-              className={`rounded-full px-6 py-3 text-sm font-bold transition hover:scale-[1.02] ${
+              className={`brand-pill-secondary rounded-full px-6 py-3 text-sm font-bold transition hover:scale-[1.02] ${
                 isDark
                   ? "border border-emerald-400/30 bg-emerald-500/10 text-emerald-200 hover:bg-emerald-500/20"
                   : "border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
@@ -611,7 +595,7 @@ export default function Home() {
             </a>
             <a
               href="/error-helper"
-              className={`rounded-full px-6 py-3 text-sm font-bold transition hover:scale-[1.02] ${
+              className={`brand-pill-secondary rounded-full px-6 py-3 text-sm font-bold transition hover:scale-[1.02] ${
                 isDark
                   ? "border border-red-400/30 bg-red-500/10 text-red-200 hover:bg-red-500/20"
                   : "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
@@ -627,7 +611,7 @@ export default function Home() {
         </div>
 
         {/* 채팅 미리보기 */}
-        <div className={`mx-auto mt-20 max-w-2xl overflow-hidden rounded-[2rem] text-left anim-fiu ${isDark ? "border border-white/10 bg-white/5 shadow-2xl shadow-black/50 backdrop-blur-xl" : "border border-slate-200 bg-white shadow-2xl shadow-slate-200"}`} style={{ animationDelay: ".5s" }}>
+        <div className={`brand-card-strong mx-auto mt-20 max-w-2xl overflow-hidden rounded-[2rem] text-left anim-fiu ${isDark ? "border border-white/10 bg-white/5 shadow-2xl shadow-black/50 backdrop-blur-xl" : "border border-slate-200 bg-white shadow-2xl shadow-slate-200"}`} style={{ animationDelay: ".5s" }}>
           <div className={`flex items-center gap-2 border-b px-5 py-3 ${isDark ? "border-white/10" : "border-slate-100 bg-slate-50"}`}>
             <div className="h-2.5 w-2.5 rounded-full bg-red-400" /><div className="h-2.5 w-2.5 rounded-full bg-yellow-400" /><div className="h-2.5 w-2.5 rounded-full bg-green-400" />
             <span className={`ml-2 text-xs font-semibold uppercase tracking-wider ${isDark ? "text-white/30" : "text-slate-400"}`}>VIBE PROJECT — AI 튜터</span>

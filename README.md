@@ -46,7 +46,7 @@
 
 ```env
 GEMINI_API_KEY=your_google_gemini_api_key_here
-
+```
 ## 실행방법
 1. 최신 코드 받아오기 (방금 올린 거 가져오는 명령어)
 git pull origin main
